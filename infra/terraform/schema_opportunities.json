@@ -1,0 +1,77 @@
+[
+  {
+    "name": "as_of",
+    "type": "DATE",
+    "mode": "REQUIRED"
+  },
+  {
+    "name": "lever_id",
+    "type": "STRING",
+    "mode": "REQUIRED"
+  },
+  {
+    "name": "lever_name",
+    "type": "STRING",
+    "mode": "REQUIRED"
+  },
+  {
+    "name": "category",
+    "type": "STRING",
+    "mode": "REQUIRED"
+  },
+  {
+    "name": "cloud",
+    "type": "STRING",
+    "mode": "REQUIRED"
+  },
+  {
+    "name": "scope",
+    "type": "STRING",
+    "mode": "NULLABLE"
+  },
+  {
+    "name": "monthly_savings",
+    "type": "NUMERIC",
+    "mode": "REQUIRED"
+  },
+  {
+    "name": "annual_savings",
+    "type": "NUMERIC",
+    "mode": "REQUIRED"
+  },
+  {
+    "name": "effort",
+    "type": "STRING",
+    "mode": "NULLABLE"
+  },
+  {
+    "name": "risk",
+    "type": "STRING",
+    "mode": "NULLABLE"
+  },
+  {
+    "name": "time_to_value",
+    "type": "STRING",
+    "mode": "NULLABLE"
+  },
+  {
+    "name": "confidence",
+    "type": "FLOAT",
+    "mode": "NULLABLE"
+  },
+  {
+    "name": "evidence",
+    "type": "STRING",
+    "mode": "NULLABLE"
+  },
+  {
+    "name": "resource_count",
+    "type": "INTEGER",
+    "mode": "NULLABLE"
+  },
+  {
+    "name": "_generated_at",
+    "type": "TIMESTAMP",
+    "mode": "REQUIRED"
+  }
+]

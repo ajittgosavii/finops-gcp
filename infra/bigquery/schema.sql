@@ -60,6 +60,14 @@ CREATE TABLE IF NOT EXISTS `${PROJECT}.${DATASET}.focus_costs`
   PricingCurrency         STRING,
   PricingQuantity         NUMERIC,
   PricingUnit             STRING,
+  -- FOCUS 1.2 added these three. They are Conditional, not optional: a payer
+  -- that bills in anything other than the billing currency (an Azure EA priced
+  -- in EUR, say) carries its native-currency prices here, and dropping them
+  -- silently loses the only record of what was actually quoted.
+  PricingCurrencyContractedUnitPrice NUMERIC,
+  PricingCurrencyEffectiveCost       NUMERIC,
+  PricingCurrencyListUnitPrice       NUMERIC,
+
   ConsumedQuantity        NUMERIC,              -- 0 with EffectiveCost>0 == idle
   ConsumedUnit            STRING,
 

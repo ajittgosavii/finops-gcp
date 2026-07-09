@@ -10,3 +10,6 @@ node_modules/
 dist/
 build/
 *.db
+
+# PowerPoint/Word/Excel lock files (created while a doc is open)
+~$*

@@ -1,0 +1,327 @@
+[
+  {
+    "name": "BillingAccountId",
+    "type": "STRING",
+    "mode": "REQUIRED"
+  },
+  {
+    "name": "BillingAccountName",
+    "type": "STRING",
+    "mode": "REQUIRED"
+  },
+  {
+    "name": "BillingAccountType",
+    "type": "STRING",
+    "mode": "NULLABLE"
+  },
+  {
+    "name": "BillingCurrency",
+    "type": "STRING",
+    "mode": "REQUIRED"
+  },
+  {
+    "name": "BillingPeriodStart",
+    "type": "TIMESTAMP",
+    "mode": "REQUIRED"
+  },
+  {
+    "name": "BillingPeriodEnd",
+    "type": "TIMESTAMP",
+    "mode": "REQUIRED"
+  },
+  {
+    "name": "InvoiceId",
+    "type": "STRING",
+    "mode": "NULLABLE"
+  },
+  {
+    "name": "InvoiceIssuerName",
+    "type": "STRING",
+    "mode": "REQUIRED"
+  },
+  {
+    "name": "SubAccountId",
+    "type": "STRING",
+    "mode": "NULLABLE"
+  },
+  {
+    "name": "SubAccountName",
+    "type": "STRING",
+    "mode": "NULLABLE"
+  },
+  {
+    "name": "SubAccountType",
+    "type": "STRING",
+    "mode": "NULLABLE"
+  },
+  {
+    "name": "ChargeCategory",
+    "type": "STRING",
+    "mode": "REQUIRED"
+  },
+  {
+    "name": "ChargeClass",
+    "type": "STRING",
+    "mode": "NULLABLE"
+  },
+  {
+    "name": "ChargeDescription",
+    "type": "STRING",
+    "mode": "REQUIRED"
+  },
+  {
+    "name": "ChargeFrequency",
+    "type": "STRING",
+    "mode": "NULLABLE"
+  },
+  {
+    "name": "ChargePeriodStart",
+    "type": "TIMESTAMP",
+    "mode": "REQUIRED"
+  },
+  {
+    "name": "ChargePeriodEnd",
+    "type": "TIMESTAMP",
+    "mode": "REQUIRED"
+  },
+  {
+    "name": "BilledCost",
+    "type": "NUMERIC",
+    "mode": "REQUIRED"
+  },
+  {
+    "name": "EffectiveCost",
+    "type": "NUMERIC",
+    "mode": "REQUIRED"
+  },
+  {
+    "name": "ListCost",
+    "type": "NUMERIC",
+    "mode": "REQUIRED"
+  },
+  {
+    "name": "ContractedCost",
+    "type": "NUMERIC",
+    "mode": "REQUIRED"
+  },
+  {
+    "name": "ContractedUnitPrice",
+    "type": "NUMERIC",
+    "mode": "NULLABLE"
+  },
+  {
+    "name": "ListUnitPrice",
+    "type": "NUMERIC",
+    "mode": "NULLABLE"
+  },
+  {
+    "name": "PricingCategory",
+    "type": "STRING",
+    "mode": "NULLABLE"
+  },
+  {
+    "name": "PricingCurrency",
+    "type": "STRING",
+    "mode": "NULLABLE"
+  },
+  {
+    "name": "PricingQuantity",
+    "type": "NUMERIC",
+    "mode": "NULLABLE"
+  },
+  {
+    "name": "PricingUnit",
+    "type": "STRING",
+    "mode": "NULLABLE"
+  },
+  {
+    "name": "PricingCurrencyContractedUnitPrice",
+    "type": "NUMERIC",
+    "mode": "NULLABLE"
+  },
+  {
+    "name": "PricingCurrencyEffectiveCost",
+    "type": "NUMERIC",
+    "mode": "NULLABLE"
+  },
+  {
+    "name": "PricingCurrencyListUnitPrice",
+    "type": "NUMERIC",
+    "mode": "NULLABLE"
+  },
+  {
+    "name": "ConsumedQuantity",
+    "type": "NUMERIC",
+    "mode": "NULLABLE"
+  },
+  {
+    "name": "ConsumedUnit",
+    "type": "STRING",
+    "mode": "NULLABLE"
+  },
+  {
+    "name": "CommitmentDiscountCategory",
+    "type": "STRING",
+    "mode": "NULLABLE"
+  },
+  {
+    "name": "CommitmentDiscountId",
+    "type": "STRING",
+    "mode": "NULLABLE"
+  },
+  {
+    "name": "CommitmentDiscountName",
+    "type": "STRING",
+    "mode": "NULLABLE"
+  },
+  {
+    "name": "CommitmentDiscountQuantity",
+    "type": "NUMERIC",
+    "mode": "NULLABLE"
+  },
+  {
+    "name": "CommitmentDiscountStatus",
+    "type": "STRING",
+    "mode": "NULLABLE"
+  },
+  {
+    "name": "CommitmentDiscountType",
+    "type": "STRING",
+    "mode": "NULLABLE"
+  },
+  {
+    "name": "CommitmentDiscountUnit",
+    "type": "STRING",
+    "mode": "NULLABLE"
+  },
+  {
+    "name": "CapacityReservationId",
+    "type": "STRING",
+    "mode": "NULLABLE"
+  },
+  {
+    "name": "CapacityReservationStatus",
+    "type": "STRING",
+    "mode": "NULLABLE"
+  },
+  {
+    "name": "ProviderName",
+    "type": "STRING",
+    "mode": "REQUIRED"
+  },
+  {
+    "name": "PublisherName",
+    "type": "STRING",
+    "mode": "NULLABLE"
+  },
+  {
+    "name": "ServiceCategory",
+    "type": "STRING",
+    "mode": "REQUIRED"
+  },
+  {
+    "name": "ServiceName",
+    "type": "STRING",
+    "mode": "REQUIRED"
+  },
+  {
+    "name": "ServiceSubcategory",
+    "type": "STRING",
+    "mode": "NULLABLE"
+  },
+  {
+    "name": "ResourceId",
+    "type": "STRING",
+    "mode": "NULLABLE"
+  },
+  {
+    "name": "ResourceName",
+    "type": "STRING",
+    "mode": "NULLABLE"
+  },
+  {
+    "name": "ResourceType",
+    "type": "STRING",
+    "mode": "NULLABLE"
+  },
+  {
+    "name": "RegionId",
+    "type": "STRING",
+    "mode": "NULLABLE"
+  },
+  {
+    "name": "RegionName",
+    "type": "STRING",
+    "mode": "NULLABLE"
+  },
+  {
+    "name": "AvailabilityZone",
+    "type": "STRING",
+    "mode": "NULLABLE"
+  },
+  {
+    "name": "SkuId",
+    "type": "STRING",
+    "mode": "NULLABLE"
+  },
+  {
+    "name": "SkuMeter",
+    "type": "STRING",
+    "mode": "NULLABLE"
+  },
+  {
+    "name": "SkuPriceDetails",
+    "type": "STRING",
+    "mode": "NULLABLE"
+  },
+  {
+    "name": "SkuPriceId",
+    "type": "STRING",
+    "mode": "NULLABLE"
+  },
+  {
+    "name": "Tags",
+    "type": "STRING",
+    "mode": "NULLABLE"
+  },
+  {
+    "name": "tag_application",
+    "type": "STRING",
+    "mode": "REQUIRED"
+  },
+  {
+    "name": "tag_business_unit",
+    "type": "STRING",
+    "mode": "REQUIRED"
+  },
+  {
+    "name": "tag_cost_center",
+    "type": "STRING",
+    "mode": "REQUIRED"
+  },
+  {
+    "name": "tag_environment",
+    "type": "STRING",
+    "mode": "REQUIRED"
+  },
+  {
+    "name": "tag_owner",
+    "type": "STRING",
+    "mode": "REQUIRED"
+  },
+  {
+    "name": "tag_project",
+    "type": "STRING",
+    "mode": "REQUIRED"
+  },
+  {
+    "name": "_ingested_at",
+    "type": "TIMESTAMP",
+    "mode": "REQUIRED"
+  },
+  {
+    "name": "_binding",
+    "type": "STRING",
+    "mode": "NULLABLE"
+  }
+]

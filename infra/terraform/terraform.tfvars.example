@@ -1,0 +1,33 @@
+# Copy to terraform.tfvars and fill in. terraform.tfvars is gitignored.
+
+project_id = "my-conedison-finops"
+region     = "us-central1"
+
+# BigQuery dataset location. If the dataset already exists (created by
+# infra/bigquery/schema.sql), this MUST match its location.
+bq_location = "US"
+
+# Images. Leave unset to default to the Artifact Registry path at :latest, which
+# is what cloudbuild.yaml pushes. Set explicitly to pin a digest for a release.
+# api_image    = "us-central1-docker.pkg.dev/my-conedison-finops/finops/finops-api@sha256:..."
+# ingest_image = "us-central1-docker.pkg.dev/my-conedison-finops/finops/finops-ingest@sha256:..."
+
+allow_origins = "https://finops.example.com,http://localhost:5173"
+
+# The account bindings, as a JSON array. Each binding carries its OWN secrets, so
+# two AWS payers never share a key. Keep this out of source control -- pass it
+# with -var-file to a *.auto.tfvars you do not commit, or via TF_VAR_finops_accounts.
+finops_accounts = <<EOT
+[
+  {
+    "cloud": "AWS",
+    "name": "ConEd Regulated payer",
+    "connector": "aws_native",
+    "secrets": {
+      "AWS_ACCESS_KEY_ID": "AKIA...",
+      "AWS_SECRET_ACCESS_KEY": "..."
+    },
+    "options": { "region": "us-east-1" }
+  }
+]
+EOT

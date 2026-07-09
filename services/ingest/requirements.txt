@@ -1,0 +1,19 @@
+# The ingest Cloud Run Job. `finops-core` is installed from the monorepo with
+# the cloud SDKs, because unlike the API this process actually talks to the
+# hyperscalers' billing APIs. Every SDK import inside the connectors is lazy, so
+# only the clouds a binding names are ever loaded.
+
+# BigQuery is the warehouse and the load target.
+google-cloud-bigquery>=3.25,<4
+db-dtypes>=1.2,<2
+
+# Parquet landing zone on GCS (fsspec + gcsfs back the gs:// URIs).
+pyarrow>=22,<25
+gcsfs>=2024.6
+
+# Engines (the optimize detectors run here nightly).
+statsmodels>=0.14.5,<1
+scipy>=1.16,<2
+
+# REST vendor connectors.
+requests>=2.32,<3

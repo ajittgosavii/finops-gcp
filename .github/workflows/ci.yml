@@ -1,0 +1,97 @@
+name: CI
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+
+# The tests never touch GCP or the network; they run the same engines the
+# Streamlit app and the API run, against the synthetic demo estate.
+jobs:
+  test:
+    name: tests (py${{ matrix.python }})
+    runs-on: ubuntu-latest
+    strategy:
+      fail-fast: false
+      matrix:
+        python: ["3.11", "3.12"]
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-python@v5
+        with:
+          python-version: ${{ matrix.python }}
+
+      - name: finops-core
+        run: |
+          pip install -e "packages/finops-core[dev]"
+          pytest packages/finops-core
+
+      - name: api (demo mode)
+        run: |
+          pip install -r services/api/requirements.txt
+          cd services/api && DATA_SOURCE=demo pytest
+
+      - name: ingest
+        run: |
+          pip install -r services/ingest/requirements.txt
+          cd services/ingest && pytest
+
+  # A pin that has no wheel for a target interpreter forces a source build, which
+  # only fails once you are inside a Cloud Build. Catch it here, across every
+  # interpreter we might deploy on. (pyarrow<21 had no cp314 wheel and broke a
+  # sibling deploy exactly this way.)
+  wheels:
+    name: wheels resolve (py${{ matrix.python }} / ${{ matrix.target }})
+    runs-on: ubuntu-latest
+    strategy:
+      fail-fast: false
+      matrix:
+        python: ["3.11", "3.12", "3.13"]
+        target:
+          - "services/api/requirements.txt"
+          - "services/ingest/requirements.txt"
+    steps:
+      - uses: actions/checkout@v4
+      - uses: astral-sh/setup-uv@v5
+      - name: compile ${{ matrix.target }} with wheels only
+        run: |
+          uv pip compile --no-build --python-version ${{ matrix.python }} \
+            "${{ matrix.target }}" -o /dev/null
+
+  # The core package's own pins (pandas, numpy, pyarrow, statsmodels, scipy) must
+  # also resolve to wheels on every target interpreter, with all extras.
+  wheels-core:
+    name: wheels resolve core (py${{ matrix.python }})
+    runs-on: ubuntu-latest
+    strategy:
+      fail-fast: false
+      matrix:
+        python: ["3.11", "3.12", "3.13"]
+    steps:
+      - uses: actions/checkout@v4
+      - uses: astral-sh/setup-uv@v5
+      - name: compile finops-core with wheels only
+        run: |
+          uv pip compile --no-build --all-extras --python-version ${{ matrix.python }} \
+            packages/finops-core/pyproject.toml -o /dev/null
+
+  # extract_core regenerates finops-core from the sibling Streamlit app. That
+  # sibling is not checked out in CI, so this must be a graceful no-op, not a
+  # failure.
+  extract-core:
+    name: extract_core is a graceful no-op without the sibling
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+      - name: skip cleanly when ../multicloud-finops is absent
+        run: |
+          if [ -f ../multicloud-finops/focus.py ]; then
+            pip install -e "packages/finops-core[dev]"
+            python tools/extract_core.py --src ../multicloud-finops
+          else
+            echo "sibling repo ../multicloud-finops absent; nothing to extract (expected in CI)"
+          fi
