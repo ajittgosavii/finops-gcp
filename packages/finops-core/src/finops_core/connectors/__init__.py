@@ -43,6 +43,7 @@ REGISTRY: Dict[str, str] = {
     "aws_native": "finops_core.connectors.aws_native:AWSNativeConnector",
     "azure_native": "finops_core.connectors.azure_native:AzureNativeConnector",
     "gcp_native": "finops_core.connectors.gcp_native:GCPNativeConnector",
+    "oci_native": "finops_core.connectors.oci_native:OCINativeConnector",
     # Any FOCUS-conformant file or object store
     "focus_file": "finops_core.connectors.focus_file:FocusFileConnector",
     # Commercial FinOps platforms

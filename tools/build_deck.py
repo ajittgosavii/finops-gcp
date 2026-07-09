@@ -50,6 +50,8 @@ VIOLET = RGBColor(0x5B, 0x4B, 0xC4)
 AMBER = RGBColor(0xC9, 0x85, 0x1F)
 CRIMSON = RGBColor(0xC2, 0x33, 0x33)
 GREEN = RGBColor(0x0C, 0x7A, 0x3E)
+# OCI: violet, not Oracle red -- CRIMSON is the alert hue on every other slide.
+ORACLE = RGBColor(0x6E, 0x3A, 0xA7)
 
 SERIES = [
     RGBColor(0x2A, 0x78, 0xD6), RGBColor(0xEB, 0x68, 0x34), RGBColor(0x1B, 0xAF, 0x7A),
@@ -353,7 +355,7 @@ def slide_title(prs, f: Facts):
     box(s, Inches(0.9), Inches(0.72), Inches(6), Inches(0.35), "INFOSYS", 12, True, AZURE)
     box(s, Inches(0.9), Inches(1.0), Inches(11.6), Inches(0.9), "Multi-Cloud FinOps on Google Cloud", 38, True, INK)
     box(s, Inches(0.9), Inches(1.92), Inches(11.6), Inches(0.5),
-        "AWS, Azure and GCP spend in one FOCUS warehouse, with an agentic control plane", 15.5, False, BODY)
+        "AWS, Azure, GCP and OCI spend in one FOCUS warehouse, with an agentic control plane", 15.5, False, BODY)
     box(s, Inches(0.9), Inches(3.05), Inches(11), Inches(0.4), f"Prepared for {f.org}", 15, True, INK)
     bullets(s, Inches(0.9), Inches(3.55), Inches(11.6), Inches(2.4), [
         "Three clouds normalised to the FinOps Foundation's FOCUS 1.2 specification, in BigQuery",
@@ -370,7 +372,7 @@ def slide_problem(prs, f: Facts):
     header(s, "The problem", "Three clouds, three schemas, no single truth",
            "Multi-cloud FinOps is a data problem before it is a savings problem")
     items = [
-        ("Three billing schemas", "AWS, Azure and GCP each bill in their own shape. Reconciling them by hand is a monthly project, not a dashboard."),
+        ("Three billing schemas", "AWS, Azure, GCP and OCI each bill in their own shape. Reconciling them by hand is a monthly project, not a dashboard."),
         ("Credential sprawl", "Teams assume one credential per account. It is one per payer — and the difference is dozens of keys nobody rotates."),
         ("Tool lock-in", "Pick a FinOps platform and every dashboard, KPI and script is written against that vendor's field names."),
         ("Unallocated spend", "Untagged resources land in a bucket nobody owns, so chargeback is disputed and showback is ignored."),
@@ -395,17 +397,22 @@ def slide_focus(prs, f: Facts):
         ("AWS", "Data Exports — FOCUS_1_2_AWS\nGA 19 Nov 2025 (1.0 GA Nov 2024)", AMBER),
         ("Azure", "Cost Management exports\ndataset type FocusCost", AZURE),
         ("Google Cloud", "gcp_billing_export_focus_*\nnative, inside BigQuery already", GREEN),
+        ("OCI", "FOCUS Reports in the Oracle-owned\n'bling' bucket, gzipped CSV", ORACLE),
     ]
+    # Four boxes across the 11.93in content width: 2.83 wide on a 3.03 pitch ends
+    # at 12.63. The old 3.83/4.02 pair fitted three and put the fourth at 16.6in,
+    # a full 3.3in off a 13.33in slide.
+    CARD_W, PITCH = Inches(2.83), Inches(3.03)
     x = Inches(0.7)
     for name, sub, colour in emitters:
-        rect(s, x, Inches(2.2), Inches(3.83), Inches(1.5), PAPER, RULE)
-        bar(s, x, Inches(2.2), Inches(3.83), Pt(4), colour)
-        box(s, x + Inches(0.25), Inches(2.4), Inches(3.4), Inches(0.4), name, 15, True, INK)
-        box(s, x + Inches(0.25), Inches(2.82), Inches(3.4), Inches(0.8), sub, 10.5, False, BODY)
-        x += Inches(4.02)
+        rect(s, x, Inches(2.2), CARD_W, Inches(1.5), PAPER, RULE)
+        bar(s, x, Inches(2.2), CARD_W, Pt(4), colour)
+        box(s, x + Inches(0.2), Inches(2.4), Inches(2.43), Inches(0.4), name, 14, True, INK)
+        box(s, x + Inches(0.2), Inches(2.82), Inches(2.43), Inches(0.8), sub, 9.5, False, BODY)
+        x += PITCH
 
     box(s, Inches(0.7), Inches(4.0), Inches(11.9), Inches(1.4),
-        "All three hyperscalers emit FOCUS natively today. So do CloudZero and Vantage; Cloudability, CloudHealth and "
+        "All four providers emit FOCUS natively today. So do CloudZero and Vantage; Cloudability, CloudHealth and "
         "Flexera ingest it. That is why this platform is vendor-neutral by construction rather than by adapter: no dashboard, "
         "KPI formula, optimization detector or agent tool has ever seen a vendor-specific field.",
         13, False, BODY)
@@ -427,10 +434,10 @@ def slide_comparison(prs, f: Facts):
     rows = [
         ("Where it runs", "Streamlit Community Cloud, one process", "Cloud Run, scales to zero, one service per concern"),
         ("Data", "Whole FOCUS frame in pandas memory", "BigQuery, partitioned and clustered; aggregates pushed to SQL"),
-        ("Scale ceiling", "~55k rows demo; ~8 GB at 500k line-items/month", "Billions of rows; queries prune to a slice"),
+        ("Scale ceiling", "~63k rows demo; ~8 GB at 500k line-items/month", "Billions of rows; queries prune to a slice"),
         ("Cost control", "None needed", "Partition filter required, bytes-billed capped, detectors run nightly"),
         ("Agents", "LangGraph supervisor on gpt-5", "Google ADK coordinator on Gemini, via Vertex"),
-        ("Model credentials", "OPENAI_API_KEY in a secret", "ADC on the service account — no API key exists"),
+        ("Model credentials", "OPENAI_API_KEY in a secret", "ADC on the service account — no model API key exists"),
         ("Front end", "Streamlit, server-rendered", "React + TypeScript, Plotly figure JSON from the same chart code"),
         ("Auth", "Shared password", "Cloud Identity / Okta behind IAP, per-persona RBAC"),
         ("Ingest", "On demand, in the request", "Nightly Cloud Run Job, idempotent, GCS as replay source"),
@@ -567,7 +574,7 @@ def slide_agent_cost(prs, f: Facts):
 def slide_exec(prs, f: Facts):
     s = blank(prs)
     header(s, "What it tells you", "The executive view",
-           f"Amortised spend across AWS, Azure and GCP · {f.months} months of history")
+           f"Amortised spend across AWS, Azure, GCP and OCI · {f.months} months of history")
     cards = [
         ("Total amortised spend", money(f.spend), "FOCUS EffectiveCost", AZURE),
         ("Effective savings rate", f"{f.esr:.1f}%", "vs on-demand equivalent", VIOLET),
@@ -698,7 +705,7 @@ def slide_security(prs, f: Facts):
     header(s, "Security", "Read-only, keyless, and cost-bounded",
            "What a regulated utility's security review will ask about")
     rows = [
-        ("No static cloud keys", "AWS and Azure are reached through Workload Identity Federation. The GCP service account assumes a read-only role. Nothing to rotate, nothing to leak."),
+        ("No static cloud keys", "AWS and Azure are reached through Workload Identity Federation — nothing to rotate there. OCI is the exception: its SDK signs with an RSA key, so that one key lives in Secret Manager and does need rotation."),
         ("No model API key", "Gemini is reached through Vertex, authenticated by Application Default Credentials on the Cloud Run service account. There is no key to store."),
         ("Least privilege", "The API service account holds bigquery.dataViewer, bigquery.jobUser and aiplatform.user. Ingest adds dataEditor and a bucket-scoped objectAdmin. Nothing can change a cloud resource."),
         ("The agent cannot write SQL", "It calls typed tools with a whitelisted column set. No eval, no string interpolation into a query, and no path from a prompt to the warehouse."),
@@ -753,7 +760,7 @@ def slide_roadmap(prs, f: Facts):
     header(s, "Delivery", "A phased rollout, value in the first wave", "Sequenced by risk, not by dollar size")
     waves = [
         ("Phase 1 · Weeks 1–3", GREEN, "Land it", [
-            "GCP project, Workload Identity Federation to AWS and Azure",
+            "GCP project, Workload Identity Federation to AWS and Azure, an API signing key for OCI",
             "BigQuery warehouse, first ingest of one payer per cloud",
             "Cloud Run API + executive dashboard, behind IAP",
             "Validate FOCUS conformance against real exports",
@@ -809,7 +816,7 @@ def slide_next(prs, f: Facts):
     steps = [
         ("A GCP project", "Plus a billing account, a VPC, and Owner long enough to land the Terraform."),
         ("An identity provider", "Cloud Identity, Okta or Entra, behind Identity-Aware Proxy. This replaces the demo password."),
-        ("One read-only credential per payer", "Not per account. AWS and Azure via Workload Identity Federation; GCP needs only the billing export enabled."),
+        ("One read-only credential per payer", "Not per account. AWS and Azure via Workload Identity Federation; GCP needs only the billing export enabled; OCI needs one API key plus an 'endorse' policy into Oracle's report tenancy."),
         ("A FOCUS export, ideally", "AWS Data Exports (FOCUS 1.2) and Azure FocusCost give a true list price, so Effective Savings Rate is correct rather than understated."),
         ("Your tagging standard", "So the canonical keys map to Con Edison's own: application, business unit, cost centre, environment, owner, project."),
         ("A business driver feed", "Customers served, kWh delivered, work orders closed. This is what turns a cloud bill into a unit cost a VP can defend."),
@@ -840,7 +847,7 @@ def build(out: str) -> str:
             "Vector source: docs/diagrams/gcp_architecture.svg")
     diagram(prs, "cloud_onboarding", "Connecting the clouds",
             "One credential per payer, not one per account",
-            "How AWS, Azure and Google Cloud each aggregate billing",
+            "How AWS, Azure, Google Cloud and OCI each aggregate billing",
             "Vector source: docs/diagrams/cloud_onboarding.svg")
     slide_comparison(prs, f)
     slide_why_rebuild(prs, f)

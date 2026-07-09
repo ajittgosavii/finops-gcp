@@ -35,6 +35,8 @@ connectors = ["requests>=2.32,<3"]
 aws = ["boto3>=1.34", "s3fs>=2024.6"]
 gcp = ["google-cloud-bigquery>=3.25", "google-auth>=2.30", "gcsfs>=2024.6"]
 azure = ["azure-storage-blob>=12.19", "adlfs>=2024.4"]
+# The `oci` SDK carries every OCI service client; there is no billing-only slice.
+oci = ["oci>=2.160"]
 
 dev = ["pytest>=8,<9", "finops-core[stats,charts,connectors]"]
 

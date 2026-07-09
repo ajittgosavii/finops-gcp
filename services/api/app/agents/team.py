@@ -85,7 +85,7 @@ _SPECIALISTS = {
 def _coordinator_instruction(persona: str) -> str:
     expectation = CORE_PERSONAS.get(persona, "")
     return f"""You coordinate a FinOps team answering questions about a multi-cloud estate
-(AWS, Azure, GCP) for {{organisation}}.
+(AWS, Azure, GCP, OCI) for {{organisation}}.
 
 The person asking is a **{persona}**. {expectation}
 

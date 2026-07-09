@@ -36,6 +36,9 @@ WASH = "#F5F8FC"
 AWS = "#C9851F"
 AZURE = "#1E6FD9"
 GCP = "#0C7A3E"
+# Violet, not Oracle red: CRIMSON below is the IDENTITY band and the alert hue,
+# and AWS already owns the warm amber. A provider must not read as a warning.
+ORACLE = "#6E3AA7"
 
 TEAL = "#119B8A"
 VIOLET = "#5B4BC4"
@@ -123,8 +126,8 @@ def save(fig, name: str) -> List[str]:
 def gcp_architecture() -> List[str]:
     fig, ax = canvas(16, 11)
     title(ax, "Target architecture",
-          "Three clouds, one FOCUS warehouse, one control plane on Google Cloud",
-          "AWS and Azure authenticate through Workload Identity Federation. No static keys anywhere.")
+          "Four clouds, one FOCUS warehouse, one control plane on Google Cloud",
+          "AWS and Azure federate through Workload Identity. OCI signs with an API key, so that one lives in Secret Manager.")
 
     Y_SRC, Y_AUTH, Y_ING, Y_WH, Y_SRV, Y_UX = 12.5, 22.0, 29.5, 40.0, 49.0, 58.5
 
@@ -135,38 +138,52 @@ def gcp_architecture() -> List[str]:
     band(ax, 2, Y_SRV - 1.3, 96, 7.4, "SERVING", AZURE)
     band(ax, 2, Y_UX - 1.3, 96, 6.4, "EXPERIENCE", GCP)
 
-    # Sources -- one box per cloud, plus the escape hatches
+    # Sources -- one box per cloud, plus the escape hatches. Six boxes at width
+    # 14.2 on a 15.2 pitch span 4.9..95.1 and stay inside the band.
     srcs = [
         ("AWS", "Data Exports\nFOCUS_1_2_AWS -> S3", AWS),
         ("Azure", "Cost Management\nFocusCost export -> Blob", AZURE),
         ("Google Cloud", "gcp_billing_export_focus_*\nnative, in BigQuery", GCP),
+        ("OCI", "FOCUS Reports\n'bling' bucket -> gz CSV", ORACLE),
         ("Procured tool", "Cloudability · CloudHealth\nFlexera · Finout · Vantage", MUTED),
         ("FOCUS file", "Any conformant\nCSV / Parquet", MUTED),
     ]
+    src_w = 14.2
     src_cx = []
-    x = 6.5
+    x = 4.9
     for name, sub, colour in srcs:
-        node(ax, x, Y_SRC, 16.6, 5.8, name, sub, colour, PAPER, 8.4, 5.2)
-        src_cx.append(x + 8.3)
-        x += 18.1
+        node(ax, x, Y_SRC, src_w, 5.8, name, sub, colour, PAPER, 7.9, 4.8)
+        src_cx.append(x + src_w / 2)
+        x += 15.2
 
     # Identity
-    node(ax, 6.5, Y_AUTH, 34.7, 3.6, "Workload Identity Federation",
-         "AWS + Azure read-only roles, assumed by the GCP service account", CRIMSON, "#FDF1F1", 7.8, 5.2)
-    node(ax, 43.5, Y_AUTH, 23.6, 3.6, "Application Default Credentials",
-         "GCP billing export, BigQuery, Vertex", GCP, "#EDF7F1", 7.8, 5.2)
-    node(ax, 69.5, Y_AUTH, 28.0, 3.6, "Secret Manager",
-         "vendor API keys, when a procured tool is used", MUTED, WASH, 7.8, 5.2)
-    # AWS/Azure -> WIF; GCP -> ADC; a procured tool -> Secret Manager.
+    node(ax, 4.9, Y_AUTH, 30.0, 3.6, "Workload Identity Federation",
+         "AWS + Azure read-only roles, assumed by the GCP service account", CRIMSON, "#FDF1F1", 7.6, 4.9)
+    node(ax, 37.0, Y_AUTH, 22.0, 3.6, "Application Default Credentials",
+         "GCP billing export, BigQuery, Vertex", GCP, "#EDF7F1", 7.6, 4.9)
+    node(ax, 61.0, Y_AUTH, 34.1, 3.6, "Secret Manager",
+         "OCI API signing key · vendor API keys", MUTED, WASH, 7.6, 4.9)
+
+    # AWS/Azure -> WIF; GCP -> ADC; OCI and a procured tool -> Secret Manager.
+    #
+    # OCI is the exception that the "no static keys anywhere" line glosses over.
+    # There is no Workload Identity path from Google Cloud to OCI Object Storage:
+    # the OCI SDK signs each request with an RSA private key. So that key is a
+    # real secret, it lives in Secret Manager, and it is the one credential in
+    # this diagram that somebody has to rotate.
+    #
     # A dropped FOCUS file carries no credential at all, so it bypasses the
     # identity band entirely rather than implying it needs a secret.
+    WIF_CX, ADC_CX, SM_CX = 19.9, 48.0, 78.0
     for i, cx in enumerate(src_cx):
         if i < 2:
-            arrow(ax, (cx, Y_SRC + 5.8), (24.0, Y_AUTH), MUTED, lw=0.8)
+            arrow(ax, (cx, Y_SRC + 5.8), (WIF_CX, Y_AUTH), MUTED, lw=0.8)
         elif i == 2:
-            arrow(ax, (cx, Y_SRC + 5.8), (55.0, Y_AUTH), MUTED, lw=0.8)
+            arrow(ax, (cx, Y_SRC + 5.8), (ADC_CX, Y_AUTH), MUTED, lw=0.8)
         elif i == 3:
-            arrow(ax, (cx, Y_SRC + 5.8), (83.0, Y_AUTH), MUTED, lw=0.8)
+            arrow(ax, (cx, Y_SRC + 5.8), (SM_CX - 7.0, Y_AUTH), CRIMSON, lw=0.9)
+        elif i == 4:
+            arrow(ax, (cx, Y_SRC + 5.8), (SM_CX + 7.0, Y_AUTH), MUTED, lw=0.8)
         else:
             arrow(ax, (cx, Y_SRC + 5.8), (62.0, Y_ING + 1.0), MUTED, lw=0.8, rad=-0.10, dashed=True)
 
@@ -174,7 +191,7 @@ def gcp_architecture() -> List[str]:
     node(ax, 8.0, Y_ING, 24.0, 5.6, "Cloud Scheduler",
          "nightly 03:15 America/New_York", TEAL, PAPER, 8.2, 5.2)
     node(ax, 35.0, Y_ING, 30.0, 5.6, "Cloud Run Job  ·  ingest",
-         "17 connectors -> focus.normalize -> validate\na failing binding never fails the run", TEAL, PAPER, 8.2, 5.0)
+         "18 connectors -> focus.normalize -> validate\na failing binding never fails the run", TEAL, PAPER, 8.2, 5.0)
     node(ax, 68.0, Y_ING, 24.0, 5.6, "Cloud Storage",
          "raw FOCUS Parquet\nthe replay source", TEAL, PAPER, 8.2, 5.2)
     arrow(ax, (20.0, Y_ING + 2.8), (35.0, Y_ING + 2.8), TEAL, lw=1.3)
@@ -186,7 +203,7 @@ def gcp_architecture() -> List[str]:
          "FOCUS 1.2 · partitioned on ChargePeriodStart\nclustered on cloud, service, application",
          VIOLET, "#F3F1FC", 8.6, 5.2)
     node(ax, 57.0, Y_WH, 26.0, 4.6, "BigQuery  ·  opportunities",
-         "nightly snapshot of the\n53-lever detectors", VIOLET, PAPER, 8.2, 5.2)
+         "nightly snapshot of the\n59-lever detectors", VIOLET, PAPER, 8.2, 5.2)
     arrow(ax, (80.0, Y_ING + 5.6), (50.0, Y_WH), TEAL, lw=1.4, rad=0.12)
     arrow(ax, (50.0, Y_ING + 5.6), (37.0, Y_WH), TEAL, lw=1.4)
     arrow(ax, (54.0, Y_WH + 2.3), (57.0, Y_WH + 2.3), VIOLET, lw=1.0)
@@ -221,7 +238,7 @@ def gcp_architecture() -> List[str]:
 
 def cloud_onboarding() -> List[str]:
     fig, ax = canvas(16, 9.5)
-    title(ax, "Connecting the three clouds",
+    title(ax, "Connecting the four clouds",
           "One credential per payer, not one per account",
           "That is how the providers aggregate billing. A second credential is only for a second payer.")
 
@@ -241,6 +258,11 @@ def cloud_onboarding() -> List[str]:
          "Every project the account pays for,\nas SubAccountId",
          "gcp_billing_export_focus_*\nnative, no copy",
          "One per billing account"),
+        (ORACLE, "OCI",
+         "API signing key for a user in the\nTENANCY; endorse policy required",
+         "Every compartment beneath it,\nas SubAccountId",
+         "FOCUS Reports in the\nOracle-owned 'bling' bucket",
+         "One per tenancy"),
     ]
 
     hdrs = ["Cloud", "Where the credential points", "What one credential covers", "FOCUS source", "How many"]
@@ -251,8 +273,10 @@ def cloud_onboarding() -> List[str]:
 
     # Rows are sized to their content. The first cut used 8.4 with a 9.6 pitch,
     # which left a band of dead space in every row and pushed the closing bullets
-    # off the bottom of the axis, straight through the caption.
-    ROW_H, ROW_PITCH = 6.4, 7.4
+    # off the bottom of the axis, straight through the caption. The fourth row
+    # (OCI) then needed the pitch tightened again -- at 7.4 it ran into the
+    # callouts below.
+    ROW_H, ROW_PITCH = 5.5, 6.35
     y = 15.2
     for colour, cloud, points, covers, source, count in rows:
         ax.add_patch(FancyBboxPatch((4.0, y), 92.0, ROW_H, boxstyle="round,pad=0,rounding_size=1.0",
@@ -264,19 +288,26 @@ def cloud_onboarding() -> List[str]:
             ax.text(x, mid, txt, fontsize=6.6, color=BODY, va="center", zorder=4, linespacing=1.6)
         y += ROW_PITCH
 
-    node(ax, 4.0, 39.4, 44.0, 5.8, "A second credential means a second PAYER",
-         "Another AWS organization, another Azure tenant or billing account,\nanother GCP billing account.",
+    node(ax, 4.0, 41.4, 44.0, 5.8, "A second credential means a second PAYER",
+         "Another AWS organization, another Azure tenant or billing account,\nanother GCP billing account, another OCI tenancy.",
          CRIMSON, "#FDF1F1", 8.2, 5.4)
-    node(ax, 52.0, 39.4, 44.0, 5.8, "A regulated utility has several",
+    node(ax, 52.0, 41.4, 44.0, 5.8, "A regulated utility has several",
          "Regulated and unregulated entities cannot share a bill.\nDeclare each as a binding; BillingAccountId keeps them apart.",
          CRIMSON, "#FDF1F1", 8.2, 5.4)
 
-    for i, t in enumerate([
-        "AWS and Azure are reached through Workload Identity Federation, so no static access key is ever stored.",
+    notes = [
+        "AWS and Azure federate through Workload Identity, so no static key is stored. OCI signs with an RSA key -- the one credential that must be rotated.",
+        "OCI's report bucket lives in Oracle's own tenancy: tenancy admin is not enough, you must 'endorse' your group into it.",
         "Prefer a FOCUS export over Cost Explorer: Cost Explorer has no list price, so Effective Savings Rate comes out understated.",
         "A binding that fails contributes zero rows and a reason. The page still renders the clouds that are wired.",
-    ]):
-        ax.text(4.0, 48.8 + i * 2.6, "—  " + t, fontsize=6.8, color=BODY, va="center")
+    ]
+    # Anchor the block to the caption rather than to a magic constant. The fourth
+    # bullet, added with OCI, printed straight through the caption when this was
+    # `50.2 + i * 2.4`. Growing upward means the next one cannot.
+    PITCH, GAP = 2.3, 2.6
+    y0 = (height(ax) - 1.6) - GAP - (len(notes) - 1) * PITCH
+    for i, t in enumerate(notes):
+        ax.text(4.0, y0 + i * PITCH, "—  " + t, fontsize=6.6, color=BODY, va="center")
 
     caption(ax, "Bindings are pulled independently and concatenated into one FOCUS frame.")
     return save(fig, "cloud_onboarding")

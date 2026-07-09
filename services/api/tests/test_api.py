@@ -19,6 +19,8 @@ os.environ.pop("GOOGLE_API_KEY", None)
 from fastapi.testclient import TestClient  # noqa: E402
 
 from app.main import app  # noqa: E402
+from finops_core.config import CLOUDS  # noqa: E402
+from finops_core.engines import optimize  # noqa: E402
 
 
 @pytest.fixture(scope="module")
@@ -70,7 +72,7 @@ def test_spend_by_dimension(client: TestClient) -> None:
     r = client.get("/api/spend/by", params={"dimension": "cloud"}).json()
     assert r["column"] == "ProviderName"
     clouds = {row["ProviderName"] for row in r["rows"]}
-    assert clouds == {"AWS", "Azure", "GCP"}
+    assert clouds == set(CLOUDS)
 
 
 # ---------------------------------------------------------------- security
@@ -121,7 +123,7 @@ def test_opportunities_and_levers(client: TestClient) -> None:
     assert o["total_annual_savings"] > 1_000_000
 
     catalog = client.get("/api/optimize/levers").json()
-    assert catalog["count"] == 53
+    assert catalog["count"] == len(optimize.LEVERS)
 
     r1 = client.get("/api/optimize/levers/R1").json()
     assert "Savings Plan" in r1["name"]

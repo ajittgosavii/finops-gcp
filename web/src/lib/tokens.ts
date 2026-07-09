@@ -168,8 +168,11 @@ export function surface(mode: Mode = DEFAULT_MODE): Surface {
 // Stable entity -> colour bindings
 // --------------------------------------------------------------------------
 
-export const PROVIDER_SLOT: Record<string, number> = { AWS: 0, Azure: 1, GCP: 2 };
-export const PROVIDERS: string[] = ["AWS", "Azure", "GCP"];
+// OCI takes slot 3 (violet), not Oracle red: red sits next to Azure's orange
+// and is the hue this palette reserves for `critical`. A provider must never
+// look like an alert. Mirrors theme.PROVIDER_SLOT exactly.
+export const PROVIDER_SLOT: Record<string, number> = { AWS: 0, Azure: 1, GCP: 2, OCI: 3 };
+export const PROVIDERS: string[] = ["AWS", "Azure", "GCP", "OCI"];
 export const OTHER_LABEL = "Other";
 
 export function providerColour(provider: string, mode: Mode = DEFAULT_MODE): string {

@@ -35,6 +35,25 @@ export function Optimize() {
     return r;
   }, [opps.data, cloud]);
 
+  // Derived from the unfiltered rows, never hard-coded: an opportunity from a
+  // provider we have never heard of must still be reachable from this filter.
+  // (`rows` is already cloud-filtered, so deriving from it would collapse the
+  // list to the current selection.)
+  //
+  // A cross-cloud finding carries a composite label -- "AWS, Azure, GCP, OCI" --
+  // so split it. The filter matches with `includes`, which is why one option per
+  // provider is the right granularity.
+  const cloudOptions = useMemo(() => {
+    const seen = new Set<string>();
+    for (const o of opps.data?.rows ?? []) {
+      for (const c of o.cloud.split(",")) {
+        const name = c.trim();
+        if (name) seen.add(name);
+      }
+    }
+    return ["", ...[...seen].sort()];
+  }, [opps.data]);
+
   // Savings by category -- one series, one colour.
   const byCategory = useMemo(() => {
     const m = new Map<string, number>();
@@ -107,7 +126,7 @@ export function Optimize() {
               </select>
               <label className="muted">Cloud</label>
               <select className="dim-select" value={cloud} onChange={(e) => setCloud(e.target.value)}>
-                {["", "AWS", "Azure", "GCP"].map((c) => (
+                {cloudOptions.map((c) => (
                   <option key={c} value={c}>
                     {c || "All"}
                   </option>

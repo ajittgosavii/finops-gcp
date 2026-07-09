@@ -245,7 +245,7 @@ def main() -> int:
         rel = p.relative_to(src / "connectors")
         copy(p, pkg / "connectors" / rel, REWRITES)
 
-    for name in ["test_engines.py", "test_optimize.py"]:
+    for name in ["test_engines.py", "test_optimize.py", "test_providers.py"]:
         copy(src / "tests" / name, tests / name, TEST_REWRITES)
 
     (pkg / "engines" / "__init__.py").write_text(
