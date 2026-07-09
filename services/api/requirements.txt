@@ -1,0 +1,17 @@
+# The API service. `finops-core` is installed from the monorepo.
+fastapi>=0.115,<1
+uvicorn[standard]>=0.30,<1
+pydantic>=2.7,<3
+
+# Google ADK 2.x. It wraps google-genai, which targets Vertex (ADC) or the
+# Gemini Developer API depending on GOOGLE_GENAI_USE_VERTEXAI.
+google-adk>=2.4,<3
+google-genai>=2.11,<3
+
+# BigQuery is the warehouse in every environment except demo.
+google-cloud-bigquery>=3.25,<4
+db-dtypes>=1.2,<2
+
+# Engines
+statsmodels>=0.14.5,<1
+scipy>=1.16,<2

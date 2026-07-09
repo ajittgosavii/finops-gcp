@@ -1,0 +1,46 @@
+[build-system]
+requires = ["hatchling"]
+build-backend = "hatchling.build"
+
+[project]
+name = "finops-core"
+version = "1.0.0"
+description = "FOCUS 1.2 contract, FinOps KPI formulas, analytics engines and cloud cost connectors."
+readme = "README.md"
+requires-python = ">=3.11"
+license = { text = "MIT" }
+authors = [{ name = "Infosys" }]
+
+# Deliberately minimal. This package must install in a Cloud Run Job that only
+# needs the engines, without dragging in a web framework or a cloud SDK.
+dependencies = [
+  "pandas>=2.2,<3",
+  "numpy>=1.26,<3",
+  "pyarrow>=22,<25",
+]
+
+[project.optional-dependencies]
+# Holt-Winters, SARIMAX and STL. The engines degrade to linear / rolling-median
+# without these, so they are an extra rather than a hard requirement.
+stats = ["statsmodels>=0.14.5,<1", "scipy>=1.16,<2"]
+
+# Charts are produced as Plotly figure JSON and rendered by the React client.
+charts = ["plotly>=5.24,<7"]
+
+# Vendor connectors speak plain REST.
+connectors = ["requests>=2.32,<3"]
+
+# Live-mode cloud SDKs. Every import inside the connectors is lazy, so install
+# only the clouds actually wired.
+aws = ["boto3>=1.34", "s3fs>=2024.6"]
+gcp = ["google-cloud-bigquery>=3.25", "google-auth>=2.30", "gcsfs>=2024.6"]
+azure = ["azure-storage-blob>=12.19", "adlfs>=2024.4"]
+
+dev = ["pytest>=8,<9", "finops-core[stats,charts,connectors]"]
+
+[tool.hatch.build.targets.wheel]
+packages = ["src/finops_core"]
+
+[tool.pytest.ini_options]
+testpaths = ["tests"]
+filterwarnings = ["ignore::DeprecationWarning"]
