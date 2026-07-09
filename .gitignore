@@ -13,3 +13,10 @@ build/
 
 # PowerPoint/Word/Excel lock files (created while a doc is open)
 ~$*
+
+# Generated deliverables. Both are rebuilt from source on demand
+# (`python tools/diagrams.py`, `python tools/build_deck.py`), and build_deck
+# regenerates any missing PNG itself. Keeping binaries out of the repo keeps
+# diffs reviewable and the clone small.
+*.pptx
+docs/diagrams/

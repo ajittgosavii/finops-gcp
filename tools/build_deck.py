@@ -358,8 +358,8 @@ def slide_title(prs, f: Facts):
         "AWS, Azure, GCP and OCI spend in one FOCUS warehouse, with an agentic control plane", 15.5, False, BODY)
     box(s, Inches(0.9), Inches(3.05), Inches(11), Inches(0.4), f"Prepared for {f.org}", 15, True, INK)
     bullets(s, Inches(0.9), Inches(3.55), Inches(11.6), Inches(2.4), [
-        "Three clouds normalised to the FinOps Foundation's FOCUS 1.2 specification, in BigQuery",
-        "One credential per payer — not one per account — with no static keys stored anywhere",
+        "Four clouds normalised to the FinOps Foundation's FOCUS 1.2 specification, in BigQuery",
+        "One credential per payer — not one per account — federated for AWS and Azure, a single signing key for OCI",
         f"{f.n_levers} optimization levers detected from the bill; {money(f.savings_total)} identified on a representative estate",
         "A Google ADK agent team on Gemini that can only quote numbers it measured",
         "Serverless on Cloud Run: scales to zero, ~$240/month plus model usage",
@@ -369,10 +369,10 @@ def slide_title(prs, f: Facts):
 
 def slide_problem(prs, f: Facts):
     s = blank(prs)
-    header(s, "The problem", "Three clouds, three schemas, no single truth",
+    header(s, "The problem", "Four clouds, four schemas, no single truth",
            "Multi-cloud FinOps is a data problem before it is a savings problem")
     items = [
-        ("Three billing schemas", "AWS, Azure, GCP and OCI each bill in their own shape. Reconciling them by hand is a monthly project, not a dashboard."),
+        ("Four billing schemas", "AWS, Azure, GCP and OCI each bill in their own shape. Reconciling them by hand is a monthly project, not a dashboard."),
         ("Credential sprawl", "Teams assume one credential per account. It is one per payer — and the difference is dozens of keys nobody rotates."),
         ("Tool lock-in", "Pick a FinOps platform and every dashboard, KPI and script is written against that vendor's field names."),
         ("Unallocated spend", "Untagged resources land in a bucket nobody owns, so chargeback is disputed and showback is ignored."),
@@ -702,7 +702,7 @@ def slide_anomaly(prs, f: Facts):
 
 def slide_security(prs, f: Facts):
     s = blank(prs)
-    header(s, "Security", "Read-only, keyless, and cost-bounded",
+    header(s, "Security", "Read-only, federated, and cost-bounded",
            "What a regulated utility's security review will ask about")
     rows = [
         ("No static cloud keys", "AWS and Azure are reached through Workload Identity Federation — nothing to rotate there. OCI is the exception: its SDK signs with an RSA key, so that one key lives in Secret Manager and does need rotation."),
