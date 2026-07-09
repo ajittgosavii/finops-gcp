@@ -43,6 +43,8 @@ ORACLE = "#6E3AA7"
 TEAL = "#119B8A"
 VIOLET = "#5B4BC4"
 CRIMSON = "#C23333"
+AMBER = "#C98500"
+GREEN = "#0C7A3E"
 
 matplotlib.rcParams["svg.fonttype"] = "none"
 matplotlib.rcParams["font.family"] = "DejaVu Sans"
@@ -107,6 +109,19 @@ def caption(ax, text: str) -> None:
     ax.text(2.0, height(ax) - 1.6, text, fontsize=6.0, color=MUTED, va="center")
 
 
+def notes(ax, lines: List[str], x: float = 3.0, pitch: float = 2.4, gap: float = 2.6) -> float:
+    """A closing bullet block, anchored UPWARD from the caption.
+
+    Anchoring to a magic top coordinate is how a bullet ends up printed through
+    the caption the moment somebody adds one. Growing up from the caption cannot
+    do that. Returns the block's top edge so a caller can check its clearance.
+    """
+    y0 = (height(ax) - 1.6) - gap - (len(lines) - 1) * pitch
+    for i, line in enumerate(lines):
+        ax.text(x, y0 + i * pitch, "—  " + line, fontsize=6.6, color=BODY, va="center")
+    return y0
+
+
 def save(fig, name: str) -> List[str]:
     os.makedirs(OUT_DIR, exist_ok=True)
     paths = []
@@ -119,13 +134,13 @@ def save(fig, name: str) -> List[str]:
 
 
 # ==========================================================================
-# 1. Three clouds into one GCP platform
+# 1. High level design -- four clouds into one GCP platform
 # ==========================================================================
 
 
-def gcp_architecture() -> List[str]:
+def hld() -> List[str]:
     fig, ax = canvas(16, 11)
-    title(ax, "Target architecture",
+    title(ax, "High level design",
           "Four clouds, one FOCUS warehouse, one control plane on Google Cloud",
           "AWS and Azure federate through Workload Identity. OCI signs with an API key, so that one lives in Secret Manager.")
 
@@ -228,11 +243,11 @@ def gcp_architecture() -> List[str]:
     arrow(ax, (55.0, Y_SRV + 4.8), (55.0, Y_UX), AZURE, lw=1.0)
 
     caption(ax, "Every source normalises to FOCUS 1.2 on ingest. Nothing above the warehouse has ever seen a vendor-specific field.")
-    return save(fig, "gcp_architecture")
+    return save(fig, "hld")
 
 
 # ==========================================================================
-# 2. How each cloud actually connects
+# 2. How each cloud actually connects (supplement to the HLD)
 # ==========================================================================
 
 
@@ -295,29 +310,195 @@ def cloud_onboarding() -> List[str]:
          "Regulated and unregulated entities cannot share a bill.\nDeclare each as a binding; BillingAccountId keeps them apart.",
          CRIMSON, "#FDF1F1", 8.2, 5.4)
 
-    notes = [
+    notes(ax, [
         "AWS and Azure federate through Workload Identity, so no static key is stored. OCI signs with an RSA key -- the one credential that must be rotated.",
         "OCI's report bucket lives in Oracle's own tenancy: tenancy admin is not enough, you must 'endorse' your group into it.",
         "Prefer a FOCUS export over Cost Explorer: Cost Explorer has no list price, so Effective Savings Rate comes out understated.",
         "A binding that fails contributes zero rows and a reason. The page still renders the clouds that are wired.",
-    ]
-    # Anchor the block to the caption rather than to a magic constant. The fourth
-    # bullet, added with OCI, printed straight through the caption when this was
-    # `50.2 + i * 2.4`. Growing upward means the next one cannot.
-    PITCH, GAP = 2.3, 2.6
-    y0 = (height(ax) - 1.6) - GAP - (len(notes) - 1) * PITCH
-    for i, t in enumerate(notes):
-        ax.text(4.0, y0 + i * PITCH, "—  " + t, fontsize=6.6, color=BODY, va="center")
+    ], x=4.0, pitch=2.3)
 
     caption(ax, "Bindings are pulled independently and concatenated into one FOCUS frame.")
     return save(fig, "cloud_onboarding")
 
 
 # ==========================================================================
+# 3. End user view
+# ==========================================================================
+
+
+# The nine React routes, from web/src/pages. A page named here that no longer
+# exists is a diagram that lies, so `tests/test_diagrams.py` reads the directory.
+PAGES = [
+    "Executive", "Forecast", "Optimize", "Anomalies", "Applications",
+    "Showback", "Governance", "Integrations", "Copilot",
+]
+
+
+def end_user_view() -> List[str]:
+    fig, ax = canvas(16, 10)
+    title(ax, "End user view",
+          "Who asks what, and where the answer lives",
+          "One scope -- cloud, application, business unit, environment, period -- governs every panel on a page")
+
+    steps = [
+        ("Sign in", "Cloud Identity / Okta"),
+        ("Scope", "cloud · app · BU · env · period"),
+        ("Read", f"{len(PAGES) - 1} dashboards"),
+        ("Drill", "every chart has a table twin"),
+        ("Ask", "Copilot, streamed over SSE"),
+    ]
+    x, y = 3.5, 12.5
+    for i, (name, sub) in enumerate(steps):
+        node(ax, x, y, 16.8, 5.2, name, sub, AZURE, PAPER, 8.2, 5.0)
+        if i:
+            arrow(ax, (x - 1.5, y + 2.6), (x, y + 2.6), AZURE, lw=1.2)
+        x += 18.4
+
+    # Personas are the FinOps Foundation's. Each maps to the pages that answer
+    # its question -- not to every page it is technically allowed to open.
+    personas = [
+        ("Leadership", "Spend, forecast vs budget,\nESR, unit cost",
+         ["Executive", "Forecast", "Applications"], CRIMSON),
+        ("Finance", "Variance, chargeback,\ninvoice reconciliation",
+         ["Showback", "Forecast", "Governance"], VIOLET),
+        ("FinOps practitioner", "Coverage, anomalies,\nsavings realised",
+         ["Optimize", "Anomalies", "Governance"], TEAL),
+        ("Engineering", "Cost per service,\nrightsizing signals",
+         ["Applications", "Optimize", "Anomalies"], AMBER),
+        ("Procurement", "Commitment coverage,\nutilisation, renewals",
+         ["Executive", "Optimize", "Integrations"], GREEN),
+    ]
+    y_p, y_t = 24.5, 33.5
+    x = 3.0
+    for name, wants, pages, colour in personas:
+        node(ax, x, y_p, 17.8, 6.8, name, wants, colour, PAPER, 8.0, 5.2)
+        arrow(ax, (x + 8.9, y_p + 6.8), (x + 8.9, y_t), colour, lw=0.9)
+        ty = y_t
+        for p in pages:
+            ax.add_patch(
+                FancyBboxPatch((x + 1.3, ty), 15.2, 2.8, boxstyle="round,pad=0,rounding_size=0.7",
+                               linewidth=0.9, edgecolor=RULE, facecolor=WASH, zorder=4)
+            )
+            ax.text(x + 8.9, ty + 1.4, p, fontsize=6.3, color=BODY, ha="center", va="center", zorder=5)
+            ty += 3.4
+        x += 18.8
+
+    notes(ax, [
+        "Every chart has a table-view twin (ChartWithTable), so no value is reachable only through a tooltip.",
+        "Status is carried by an icon and a label as well as colour. Colour follows the entity, never its rank.",
+        "The Copilot answers in outcome terms and names the tool each figure came from. It cannot compute a number itself.",
+        "Sign-in is TARGET STATE. IAP is not yet in Terraform and the API ships today with no auth.",
+    ], pitch=2.7)
+
+    caption(ax, "Personas are the FinOps Foundation's. The page list is read from web/src/pages, so a renamed route fails the build.")
+    return save(fig, "end_user_view")
+
+
+# ==========================================================================
+# 4. Low level design
+# ==========================================================================
+
+
+# Modules the LLD names. The test imports every one of them.
+LLD_MODULES = [
+    "finops_core.focus",
+    "finops_core.kpi",
+    "finops_core.engines.optimize",
+    "finops_core.engines.forecast",
+    "finops_core.engines.allocation",
+    "finops_core.engines.anomaly",
+]
+
+
+def lld() -> List[str]:
+    fig, ax = canvas(16, 10)
+    title(ax, "Low level design",
+          "One request, and one question, through the system",
+          "Where the scope becomes SQL, where the cost guards bite, and why the model never sees a query")
+
+    col = [3.0, 26.0, 51.0, 76.0]
+
+    # --- edge / client -----------------------------------------------------
+    node(ax, col[0], 13.0, 19, 4.6, "web/  React + TS", "9 pages · TanStack Query", AZURE, PAPER, 8.0, 5.2)
+    node(ax, col[0], 20.0, 19, 4.6, "Load Balancer + IAP", "target state — no auth today", MUTED, WASH, 7.6, 5.0)
+    node(ax, col[0], 27.0, 19, 4.6, "Cloud Run · FastAPI", "app/main.py", AZURE, "#EAF2FD", 7.8, 5.2)
+    arrow(ax, (12.5, 17.6), (12.5, 20.0), AZURE)
+    arrow(ax, (12.5, 24.6), (12.5, 27.0), AZURE)
+
+    # --- request path ------------------------------------------------------
+    node(ax, col[1], 13.0, 21, 4.6, "scope_params()", "the one filter row -> Scope", TEAL, PAPER, 7.8, 5.0)
+    node(ax, col[1], 20.0, 21, 4.6, "resolve_dimension()", "GROUPABLE whitelist · never eval", TEAL, PAPER, 7.4, 5.0)
+    node(ax, col[1], 27.0, 21, 4.6, "BigQueryRepository", "_where() always prunes the partition", TEAL, "#E9F7F5", 7.4, 5.0)
+    arrow(ax, (col[0] + 19, 29.3), (col[1], 29.3), AZURE)
+    arrow(ax, (36.5, 17.6), (36.5, 20.0), TEAL)
+    arrow(ax, (36.5, 24.6), (36.5, 27.0), TEAL)
+
+    # The boundary that matters here is not the secret one -- it is the SQL one.
+    ax.add_patch(mpatches.Rectangle((col[1] - 1.5, 11.4), 24.0, 21.8, linewidth=1.1,
+                                    edgecolor=CRIMSON, facecolor="none", linestyle="--", zorder=2))
+    ax.text(col[1] + 10.5, 34.8, "SQL boundary — a dimension becomes an identifier here, so it is whitelisted, never interpolated",
+            fontsize=5.4, color=CRIMSON, ha="center")
+
+    # --- warehouse ---------------------------------------------------------
+    # Stacked in the order the data actually moves: the nightly Job READS
+    # focus_costs and WRITES opportunities. Drawing focus_costs -> opportunities
+    # directly would claim the warehouse derives one from the other by itself.
+    node(ax, col[2], 13.0, 21, 5.8, "BigQuery · focus_costs",
+         "require_partition_filter = TRUE\nmaximum_bytes_billed = 20 GiB", VIOLET, "#F3F1FC", 7.8, 5.0)
+    node(ax, col[2], 21.5, 21, 4.6, "Cloud Run Job · ingest",
+         "optimize.detect_all() nightly", TEAL, PAPER, 7.4, 5.0)
+    node(ax, col[2], 29.0, 21, 4.6, "BigQuery · opportunities",
+         "API reads the MAX(as_of) partition", VIOLET, PAPER, 7.4, 5.0)
+    arrow(ax, (61.5, 18.8), (61.5, 21.5), VIOLET)   # job reads the bill
+    arrow(ax, (61.5, 26.1), (61.5, 29.0), TEAL)     # job writes the snapshot
+    arrow(ax, (col[1] + 21, 29.3), (col[2], 15.9), TEAL, rad=0.12)
+    arrow(ax, (col[1] + 21, 30.6), (col[2], 31.3), TEAL, rad=-0.06)
+
+    # --- engines (request time) --------------------------------------------
+    # optimize.detect_all() is deliberately absent: it is the nightly Job above,
+    # never a request-time call.
+    y = 13.0
+    for name, sub in [("kpi.executive_kpis()", "amortised EffectiveCost"),
+                      ("forecast.forecast_spend()", "auto-selected by WAPE backtest"),
+                      ("allocation.allocate()", "shared-cost policy"),
+                      ("anomaly.detect()", "STL + MAD on the residual")]:
+        node(ax, col[3], y, 21, 4.2, name, sub, AMBER, PAPER, 7.2, 4.9)
+        arrow(ax, (col[2] + 21, 15.9), (col[3], y + 2.1), VIOLET, rad=0.16, lw=0.7)
+        y += 5.0
+
+    # --- the agent path ----------------------------------------------------
+    node(ax, col[0], 39.0, 19, 5.0, "agents/runner.py",
+         "SSE frames\ntool · token · final · done · error", GREEN, PAPER, 7.4, 4.9)
+    node(ax, col[2], 37.5, 21, 5.6, "agents/team.py",
+         "coordinator (3.1-flash-lite)\n4 specialists as AgentTool (3.5-flash)", GREEN, "#EDF7F1", 7.8, 5.0)
+    node(ax, col[3], 38.0, 21, 4.6, "agents/tools.py",
+         "11 typed tools · never execute_sql", GREEN, PAPER, 7.2, 4.9)
+
+    arrow(ax, (12.5, 31.6), (12.5, 39.0), AZURE, dashed=True)     # POST /api/agent/ask
+    arrow(ax, (col[0] + 19, 41.5), (col[2], 40.3), GREEN)          # runner drives the team
+    arrow(ax, (col[2] + 21, 40.3), (col[3], 40.3), GREEN)          # coordinator calls a tool
+    arrow(ax, (86.5, 38.0), (86.5, 32.2), GREEN, dashed=True)      # tools call the same engines
+
+    notes(ax, [
+        "The two cost guards live in the DDL, not in convention: a query with no bound on the partition key FAILS rather than scanning two years.",
+        "Row-level detectors never run per request. The nightly Job materialises `opportunities`; the API reads one partition.",
+        "The agents are not given ADK's BigQuery `execute_sql` toolset. Hand a model SQL and it invents its own ESR -- plausible, wrong, uncaught.",
+    ], pitch=2.7)
+
+    caption(ax, "Agent tools call the same repository the REST endpoints call, so the Copilot cannot quote a number the dashboard disagrees with.")
+    return save(fig, "lld")
+
+
+# ==========================================================================
 
 
 def build_all() -> Dict[str, List[str]]:
-    return {"gcp_architecture": gcp_architecture(), "cloud_onboarding": cloud_onboarding()}
+    return {
+        "hld": hld(),
+        "end_user_view": end_user_view(),
+        "lld": lld(),
+        "cloud_onboarding": cloud_onboarding(),
+    }
 
 
 if __name__ == "__main__":

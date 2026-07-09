@@ -37,6 +37,13 @@ jobs:
           pip install -r services/ingest/requirements.txt
           cd services/ingest && pytest
 
+      # The diagrams name React routes, Python modules and counts. A rename would
+      # leave them quietly wrong, and a client reads a diagram as documentation.
+      - name: diagrams
+        run: |
+          pip install matplotlib
+          DATA_SOURCE=demo PYTHONPATH=services/api pytest tools
+
   # A pin that has no wheel for a target interpreter forces a source build, which
   # only fails once you are inside a Cloud Build. Catch it here, across every
   # interpreter we might deploy on. (pyarrow<21 had no cp314 wheel and broke a

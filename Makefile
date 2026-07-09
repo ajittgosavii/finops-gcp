@@ -18,6 +18,7 @@ test:
 	pytest packages/finops-core
 	cd services/api && DATA_SOURCE=demo pytest
 	cd services/ingest && pytest
+	DATA_SOURCE=demo PYTHONPATH=services/api pytest tools
 
 fmt:
 	terraform -chdir=infra/terraform fmt -recursive

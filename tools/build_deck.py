@@ -841,10 +841,18 @@ def build(out: str) -> str:
     slide_title(prs, f)
     slide_problem(prs, f)
     slide_focus(prs, f)
-    diagram(prs, "gcp_architecture", "Target architecture",
-            "Three clouds, one FOCUS warehouse, one control plane",
+    diagram(prs, "hld", "High level design",
+            "Four clouds, one FOCUS warehouse, one control plane",
             "Sources · Identity · Ingest · Warehouse · Serving · Experience",
-            "Vector source: docs/diagrams/gcp_architecture.svg")
+            "Vector source: docs/diagrams/hld.svg")
+    diagram(prs, "end_user_view", "End user view",
+            "Who asks what, and where the answer lives",
+            "Five personas, nine pages, one scope that governs every panel",
+            "Vector source: docs/diagrams/end_user_view.svg")
+    diagram(prs, "lld", "Low level design",
+            "One request, and one question, through the system",
+            "Where the scope becomes SQL, where the cost guards bite, and why the model never sees a query",
+            "Vector source: docs/diagrams/lld.svg")
     diagram(prs, "cloud_onboarding", "Connecting the clouds",
             "One credential per payer, not one per account",
             "How AWS, Azure, Google Cloud and OCI each aggregate billing",
