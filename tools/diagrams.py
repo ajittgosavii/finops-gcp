@@ -25,9 +25,14 @@ from matplotlib.patches import FancyArrowPatch, FancyBboxPatch  # noqa: E402
 
 OUT_DIR = os.path.join(os.path.dirname(os.path.dirname(os.path.abspath(__file__))), "docs", "diagrams")
 
+# Text colour is contrast-first. The old BODY/MUTED pair measured 8.1:1 and
+# 3.7:1 on white; MUTED is used for every sub-label, caption and footer, and
+# 3.7:1 is below the WCAG AA floor of 4.5:1 -- legible on a laptop, not on a
+# projector in a lit room. Now 11.5:1 and 7.3:1, with the three-level
+# hierarchy (18.3 / 11.5 / 7.3) intact. `tests` assert these ratios.
 INK = "#0B142A"
-BODY = "#445066"
-MUTED = "#7A8599"
+BODY = "#2E3A4E"
+MUTED = "#4E5766"
 RULE = "#E2E7EF"
 PAPER = "#FFFFFF"
 WASH = "#F5F8FC"
@@ -236,7 +241,7 @@ def hld() -> List[str]:
     arrow(ax, (70.0, Y_SRV + 2.4), (73.0, Y_SRV + 2.4), AZURE, lw=1.1)
 
     # Experience
-    node(ax, 14.0, Y_UX, 26.0, 4.4, "React client", "12 dashboards · SSE chat", GCP, PAPER, 8.4, 5.2)
+    node(ax, 14.0, Y_UX, 26.0, 4.4, "React client", "8 dashboards + Copilot · SSE", GCP, PAPER, 8.4, 5.2)
     node(ax, 44.0, Y_UX, 22.0, 4.4, "Cloud Load Balancer + IAP", "Cloud Identity / Okta", GCP, PAPER, 8.0, 5.2)
     node(ax, 70.0, Y_UX, 24.0, 4.4, "Cloud Trace · Logging", "per-agent spans, per-tool calls", GCP, PAPER, 8.0, 5.2)
     arrow(ax, (25.0, Y_SRV + 4.8), (27.0, Y_UX), AZURE, lw=1.0)
