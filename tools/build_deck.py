@@ -423,11 +423,83 @@ def slide_focus(prs, f: Facts):
         13, False, BODY)
 
     kpi_card(s, Inches(0.7), Inches(5.35), Inches(3.83), Inches(1.3), "Connectors", str(f.n_connectors),
-             "3 native + 12 procured tools + any FOCUS file", AZURE)
+             "4 native + 12 procured tools + any FOCUS file + demo", AZURE)
     kpi_card(s, Inches(4.72), Inches(5.35), Inches(3.83), Inches(1.3), "Adopting a new tool", "1 subclass",
              "plus one line in the registry", TEAL)
     kpi_card(s, Inches(8.74), Inches(5.35), Inches(3.86), Inches(1.3), "Downstream changes", "None",
              "every dashboard and agent keeps working", VIOLET)
+    footer(s)
+
+
+def slide_focus_rosetta(prs, f: Facts):
+    """The slide that makes FOCUS land.
+
+    Slide 3 says who emits FOCUS and why that means no lock-in. It never says
+    what FOCUS *is*, so the room nods and leaves none the wiser. This one shows
+    the translation happening: the same charge in four dialects collapsing into
+    three named columns, and then one formula computed from two of them.
+
+    Each FOCUS card sits directly beneath the vendor column it replaces, so the
+    mapping is read by position rather than from a legend.
+
+    Deliberately concept-level on the vendor side. Printing literal CUR / export
+    column strings is more visceral and would be one stale string away from
+    costing us the architects in the room -- Google is mid-schema-change on the
+    detailed export as of July 2026. Every word below is defensible.
+    """
+    s = blank(prs)
+    header(s, "What FOCUS actually is", "One charge. Four dialects. One row.",
+           "The FinOps Foundation's Open Cost and Usage Specification — an open schema, not our schema")
+
+    # Vendor columns. Each FOCUS card below is aligned under the one it replaces.
+    C_CLOUD, W_CLOUD = Inches(0.7), Inches(1.7)
+    C_COMMIT, W_COMMIT = Inches(2.5), Inches(3.3)
+    C_PAY, W_PAY = Inches(5.95), Inches(3.2)
+    C_LIST, W_LIST = Inches(9.3), Inches(3.3)
+
+    for x, w, label in ((C_COMMIT, W_COMMIT, "The commitment"),
+                        (C_PAY, W_PAY, "What you actually pay"),
+                        (C_LIST, W_LIST, "The undiscounted price")):
+        box(s, x, Inches(1.95), w, Inches(0.3), label, 10, True, MUTED)
+
+    rows = [
+        ("AWS", "Savings Plan · Reserved Instance", "amortized cost", "public on-demand cost", AMBER),
+        ("Azure", "Reservation · Savings Plan", "amortized cost", "pay-as-you-go price", AZURE),
+        ("GCP", "Committed Use Discount", "cost + credits", "list price", GREEN),
+        ("OCI", "Annual Universal Credits", "amortized cost", "unit price × quantity", ORACLE),
+    ]
+    y = Inches(2.35)
+    ROW_H, PITCH = Inches(0.56), Inches(0.66)
+    for name, commit, pay, lst, colour in rows:
+        rect(s, C_CLOUD, y, Inches(11.93), ROW_H, PAPER, RULE)
+        bar(s, C_CLOUD, y, Pt(4), ROW_H, colour)
+        box(s, C_CLOUD + Inches(0.18), y + Inches(0.10), W_CLOUD, Inches(0.36), name, 12, True, colour)
+        for x, w, text in ((C_COMMIT, W_COMMIT, commit), (C_PAY, W_PAY, pay), (C_LIST, W_LIST, lst)):
+            box(s, x, y + Inches(0.12), w, Inches(0.34), text, 11, False, BODY)
+        y += PITCH
+
+    box(s, C_CLOUD, Inches(4.98), Inches(11.93), Inches(0.3),
+        "▼   normalised on ingest — nothing downstream has ever seen a vendor-specific field   ▼",
+        10, True, TEAL, PP_ALIGN.CENTER)
+
+    for x, w, name, sub in ((C_COMMIT, W_COMMIT, "CommitmentDiscountStatus", "Used  |  Unused"),
+                            (C_PAY, W_PAY, "EffectiveCost", "amortised, never lumpy"),
+                            (C_LIST, W_LIST, "ListCost", "the ESR denominator")):
+        rect(s, x, Inches(5.35), w, Inches(0.82), WASH, VIOLET)
+        box(s, x + Inches(0.12), Inches(5.42), w - Inches(0.24), Inches(0.3), name, 11.5, True, INK)
+        box(s, x + Inches(0.12), Inches(5.73), w - Inches(0.24), Inches(0.28), sub, 9.5, False, MUTED)
+
+    box(s, C_CLOUD, Inches(5.42), W_CLOUD, Inches(0.3), "FOCUS 1.2", 12, True, VIOLET)
+    box(s, C_CLOUD, Inches(5.73), W_CLOUD, Inches(0.28), "one row, any cloud", 9.5, False, MUTED)
+
+    box(s, C_CLOUD, Inches(6.35), Inches(11.93), Inches(0.32),
+        "Effective Savings Rate  =  (ListCost − EffectiveCost) / ListCost      "
+        "— defined once, in one function, for all four clouds.",
+        12.5, True, INK)
+    box(s, C_CLOUD, Inches(6.70), Inches(11.93), Inches(0.30),
+        "And CommitmentDiscountStatus = 'Unused' is waste the bill states outright, not an estimate: "
+        f"{money(f.commitment_waste)} on this estate.",
+        10.5, False, BODY)
     footer(s)
 
 
@@ -846,6 +918,7 @@ def build(out: str) -> str:
     slide_title(prs, f)
     slide_problem(prs, f)
     slide_focus(prs, f)
+    slide_focus_rosetta(prs, f)
     diagram(prs, "hld", "High level design",
             "Four clouds, one FOCUS warehouse, one control plane",
             "Sources · Identity · Ingest · Warehouse · Serving · Experience",

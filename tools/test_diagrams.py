@@ -60,6 +60,19 @@ def test_every_page_named_on_the_end_user_view_exists() -> None:
     assert set(dg.PAGES) == on_disk, f"diagram: {sorted(dg.PAGES)}  disk: {sorted(on_disk)}"
 
 
+def test_the_decks_connector_breakdown_adds_up() -> None:
+    """Slide 3 breaks 18 connectors into "N native + 12 procured + ...". It said
+    "3 native" for a while after OCI landed, under a total that already said 18.
+    A breakdown that does not add up is worse than no breakdown."""
+    from finops_core.connectors import REGISTRY
+
+    native = [k for k in REGISTRY if k.endswith("_native")]
+    src = open(os.path.join(ROOT, "tools", "build_deck.py"), encoding="utf-8").read()
+    assert f"{len(native)} native" in src
+    # native + vendor + focus_file + demo == the advertised total
+    assert len(native) + 12 + 2 == len(REGISTRY)
+
+
 def test_the_dashboard_count_on_the_hld_matches_the_routes() -> None:
     """The HLD said "12 dashboards" -- the Streamlit app's tab count, carried
     over unchecked. This client has nine routes, one of which is the Copilot."""

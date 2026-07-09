@@ -1,13 +1,13 @@
 # Multi-Cloud FinOps on Google Cloud
 ## A presenter's narrative for Con Edison
 
-*Architecture → Features → Benefits. Twenty slides, about forty minutes, and one
+*Architecture → Features → Benefits. Twenty-one slides, about forty minutes, and one
 argument carried the whole way through.*
 
 Every figure in this document is computed by `tools/build_deck.py` from the same
 engines the product runs on. They describe a **synthetic 24-month utility
 estate** shipped with the platform — not Con Edison's bill. Say that out loud on
-slide 12, before anyone asks.
+slide 13, before anyone asks.
 
 ---
 
@@ -66,23 +66,62 @@ things:
 > the one the FinOps Foundation published and the four hyperscalers already
 > emit."
 
-### The architecture (slides 4–7)
+### What FOCUS actually is (slide 4)
+
+Slide 3 tells the room *who* emits FOCUS and *why* that means no lock-in. It is a
+procurement argument, and it leaves nobody understanding the thing itself. Slide
+4 shows the translation happening.
+
+The same charge — one committed compute hour — written four ways:
+
+| | the commitment | what you actually pay | the undiscounted price |
+|---|---|---|---|
+| **AWS** | Savings Plan · Reserved Instance | amortized cost | public on-demand cost |
+| **Azure** | Reservation · Savings Plan | amortized cost | pay-as-you-go price |
+| **GCP** | Committed Use Discount | cost + credits | list price |
+| **OCI** | Annual Universal Credits | amortized cost | unit price × quantity |
+
+Three columns come out the other side, and each sits directly beneath the vendor
+column it replaces: **`CommitmentDiscountStatus`** (`Used` | `Unused`),
+**`EffectiveCost`**, **`ListCost`**.
+
+Then the payoff, which is the only formula in the deck:
+
+> **Effective Savings Rate = (ListCost − EffectiveCost) / ListCost**
+>
+> Defined once, in one function, for all four clouds.
+
+And one more thing the room should hear: `CommitmentDiscountStatus = 'Unused'` is
+**waste the bill states outright** — $346K on this estate. Not a model, not an
+estimate. The invoice says you bought capacity and used none of it.
+
+> *Talk track:* "Every one of those four rows is a different team, in a different
+> tool, using a different word for the same dollar. Nothing downstream of the
+> connector in this platform has ever seen any of them."
+
+If an architect pushes on the vendor column names: the slide is deliberately
+concept-level. Google is mid-schema-change on its detailed export as of July
+2026, and one stale column string in front of their architects costs more
+credibility than the specificity buys. The exact mappings are in the connector
+source, and we will walk them through it.
+
+### The architecture (slides 5–8)
 
 Four diagrams, deliberately in this order. Each ships as **editable SVG** in
 `docs/diagrams/` — the labels are real text, so your architects can open them in
 Figma and retype a box.
 
-**Slide 4 — High level design.** Six layers, read downward: Sources, Identity,
+**Slide 5 — High level design.** Six layers, read downward: Sources, Identity,
 Ingest, Warehouse, Serving, Experience. The shape of the argument: everything
 narrows to one FOCUS table, and everything above that table is provider-blind.
 
-**Slide 5 — End user view.** Five personas, nine pages. Leadership does not want
+**Slide 6 — End user view.** Five personas, nine pages. Leadership does not want
 the same page as an engineer, and neither of them should have to construct a
 query to get an answer. One scope — cloud, application, business unit,
 environment, period — governs every panel on a page, so no two charts on the same
 screen can disagree.
 
-**Slide 6 — Low level design.** This is the slide for their architects, and it
+**Slide 7 — Low level design.** This is the slide for their architects, and it
 carries three claims worth defending:
 
 - **The scope becomes a SQL identifier.** Dimensions are whitelisted, never
@@ -94,7 +133,7 @@ carries three claims worth defending:
   and a $500 one.
 - **The model is never handed `execute_sql`.** More on this in Act II.
 
-**Slide 7 — Connecting the clouds.** The question every CIO asks: *how many
+**Slide 8 — Connecting the clouds.** The question every CIO asks: *how many
 credentials?* Answer: **one per payer, not one per account.** One AWS
 organisation, one Azure billing account, one GCP billing account, one OCI
 tenancy. A second credential means a second *payer* — which a regulated utility
@@ -109,7 +148,7 @@ does have, because regulated and unregulated entities cannot share a bill.
 >
 > Saying this unprompted buys more credibility than any slide in the deck.
 
-### Why Google Cloud, and why a rebuild (slides 8–9)
+### Why Google Cloud, and why a rebuild (slides 9–10)
 
 There is a Streamlit reference implementation of this platform. It works. The
 rebuild was **never about the user interface.**
@@ -132,7 +171,7 @@ in both.
 ---
 
 ## Act II — Features
-### The agents (slides 10–11)
+### The agents (slides 11–12)
 
 A coordinator on `gemini-3.1-flash-lite` routes; four specialists on
 `gemini-3.5-flash` reason. **Analyst** (what was spent, where), **Forecaster**
@@ -165,7 +204,7 @@ at 4,400 questions.
 > identity story — Application Default Credentials on the service account, so
 > **no model API key exists anywhere to leak**. That is worth $10 a month.
 
-### What it tells you (slides 12–15)
+### What it tells you (slides 13–16)
 
 On the synthetic estate:
 
@@ -229,7 +268,7 @@ z-score on the residual, and a dollar floor. The largest: **Analytics, 20 May
 ---
 
 ## Act III — Benefits
-### What it is worth (slides 16–18)
+### What it is worth (slides 17–19)
 
 Order these by who in the room cares.
 
@@ -256,7 +295,7 @@ spreading it. Chargeback where the tags support it; showback on the remainder.
 inference**, plus Cloud Run that scales to zero and a BigQuery bill bounded by a
 partition filter. Against $16M of annual cloud spend.
 
-### What this does not claim (slide 19)
+### What this does not claim (slide 20)
 
 Spend real time on this slide. It is the one that wins the room.
 
@@ -277,7 +316,7 @@ Spend real time on this slide. It is the one that wins the room.
 > *Talk track:* "Everything on the previous slides is real code producing real
 > numbers from a fake estate. Here is precisely what we have not proven."
 
-### The ask (slide 20)
+### The ask (slide 21)
 
 1. **Read access to one payer per cloud.** Not per account. Four credentials.
 2. **Enable a FOCUS export where one exists** — AWS Data Exports, Azure
