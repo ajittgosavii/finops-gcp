@@ -28,7 +28,7 @@ pytest.importorskip("matplotlib")
 import build_deck as bd  # noqa: E402
 from pptx import Presentation  # noqa: E402
 
-EXPECTED_SLIDES = 21
+EXPECTED_SLIDES = 23
 DIAGRAM_SLIDES = (5, 6, 7, 8)  # hld, end_user_view, lld, cloud_onboarding
 
 

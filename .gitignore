@@ -20,4 +20,5 @@ build/
 # diffs reviewable and the clone small.
 *.pptx
 *.docx
+*.xlsx
 docs/diagrams/

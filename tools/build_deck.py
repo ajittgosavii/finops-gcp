@@ -76,6 +76,123 @@ TOKENS = {"coordinator_in": 3600, "coordinator_out": 90, "specialist_in": 12000,
 QUESTIONS_PER_MONTH = 4400
 
 
+# ==========================================================================
+# The delivery estimate
+#
+# Effort is stated in PERSON-MONTHS, never in dollars. Rates are commercial and
+# not ours to invent on a slide. A number the client can multiply by their own
+# rate card is more useful, and more honest, than one we made up.
+#
+# The shape is deliberately unaggressive. Almost nothing engineering-heavy lands
+# in month 1, because in a regulated utility the long pole is not the build -- it
+# is getting read credentials on four payers and four exports enabled. Every
+# month after that assumes that work already happened.
+#
+# The table, the chart and the totals on the slide are all computed from this one
+# structure, so they cannot disagree with one another.
+# ==========================================================================
+
+CONTINGENCY = 0.15
+
+# (role, location, FTE in months 1..4, why it is staffed this way)
+EFFORT: List[Tuple[str, str, List[float], str]] = [
+    ("Engagement / Delivery Lead", "Onshore", [0.5, 0.5, 0.5, 0.5],
+     "Con Edison-facing throughout. Owns the gates."),
+    ("FinOps Solution Architect", "Onshore", [1.0, 0.5, 0.5, 0.5],
+     "Heaviest in month 1: tag taxonomy, allocation policy, KPI definitions."),
+    ("FinOps Analyst / BA", "Onshore", [0.5, 0.5, 0.5, 0.5],
+     "Validates every number against Con Edison's own reporting."),
+    ("Security & Compliance Lead", "Onshore", [0.5, 0.25, 0.25, 0.5],
+     "Front-loaded for IAM; back-loaded for IAP, RBAC and the review."),
+    ("Cloud / Data Engineers (2)", "Offshore", [1.0, 2.0, 2.0, 1.0],
+     "Connector onboarding, ingest, warehouse. The bulk of the build."),
+    ("Platform / DevOps (SRE)", "Offshore", [1.0, 1.0, 0.5, 0.5],
+     "Terraform, Cloud Run, CI. Front-loaded: the landing zone gates everything."),
+    ("Backend Engineer", "Offshore", [0.5, 1.0, 1.0, 0.5],
+     "API, repository, cost guards."),
+    ("Frontend Engineer", "Offshore", [0.0, 0.5, 1.0, 0.5],
+     "Starts once the API contract is stable, not before."),
+    ("AI / Agent Engineer", "Offshore", [0.0, 0.5, 1.0, 0.5],
+     "Agents need the engines and real data first. Month 3 is the earliest useful start."),
+    ("QA / Test Engineer", "Offshore", [0.0, 0.5, 1.0, 1.0],
+     "Ramps into UAT. Runs parity checks against Con Edison's figures."),
+]
+
+
+def effort_totals() -> dict:
+    """Person-months by location, plus contingency."""
+    on = sum(sum(f) for _, loc, f, _ in EFFORT if loc == "Onshore")
+    off = sum(sum(f) for _, loc, f, _ in EFFORT if loc == "Offshore")
+    base = on + off
+    return {
+        "onshore": on,
+        "offshore": off,
+        "base": base,
+        "contingency": base * CONTINGENCY,
+        "total": base * (1 + CONTINGENCY),
+        "offshore_pct": off / base * 100,
+        "by_month": [
+            (sum(f[m] for _, loc, f, _ in EFFORT if loc == "Onshore"),
+             sum(f[m] for _, loc, f, _ in EFFORT if loc == "Offshore"))
+            for m in range(4)
+        ],
+    }
+
+
+# Weeks are 1-indexed and inclusive. Sixteen weeks = four months.
+PLAN: List[Tuple[str, List[Tuple[str, int, int, str]]]] = [
+    ("Mobilise & access", [
+        ("Kick-off, RACI, environment standards", 1, 2, "Onshore"),
+        ("Read-only credentials on four payers", 1, 4, "Onshore"),
+        ("Enable FOCUS exports on all four clouds", 2, 5, "Onshore"),
+        ("OCI 'endorse' policy on Oracle's tenancy", 3, 5, "Onshore"),
+    ]),
+    ("Landing zone", [
+        ("GCP project, VPC, IAM, budget alerts", 2, 4, "Offshore"),
+        ("Terraform: BigQuery, Cloud Run, schedulers", 3, 6, "Offshore"),
+        ("CI/CD pipeline and environments", 4, 7, "Offshore"),
+    ]),
+    ("Ingest & warehouse", [
+        ("Connector config per payer; demo dry run", 5, 7, "Offshore"),
+        ("First real FOCUS load; partition and cluster", 6, 9, "Offshore"),
+        ("Nightly job, GCS replay, idempotency", 8, 10, "Offshore"),
+        ("Tag taxonomy + allocation policy with ConEd", 5, 9, "Onshore"),
+    ]),
+    ("Engines & KPIs", [
+        ("KPI parity vs ConEd's current reporting", 8, 11, "Onshore"),
+        ("Forecast backtest; cliff calibration", 9, 12, "Offshore"),
+        ("Optimization levers reviewed with FinOps", 10, 13, "Onshore"),
+    ]),
+    ("API & dashboards", [
+        ("REST API, scope, cost guards", 7, 10, "Offshore"),
+        ("Nine pages; chart and table twins", 9, 13, "Offshore"),
+        ("Persona walkthroughs and feedback", 12, 14, "Onshore"),
+    ]),
+    ("Agentic Copilot", [
+        ("Typed tools wired to the engines", 9, 12, "Offshore"),
+        ("Coordinator and four specialists on Vertex", 11, 14, "Offshore"),
+        ("Grounding review: every figure cites a tool", 13, 15, "Onshore"),
+    ]),
+    ("Security & hardening", [
+        ("IAP, Cloud Identity / Okta, per-persona RBAC", 11, 15, "Offshore"),
+        ("OCI key-rotation runbook; secret review", 13, 15, "Onshore"),
+        ("Security review and remediation", 14, 16, "Onshore"),
+    ]),
+    ("UAT & handover", [
+        ("UAT with Finance, FinOps and Engineering", 13, 16, "Onshore"),
+        ("Runbook, operations training, DR drill", 14, 16, "Offshore"),
+        ("Production cutover; hypercare begins", 16, 16, "Onshore"),
+    ]),
+]
+
+GATES = [
+    (4, "G1", "Access granted, exports enabled"),
+    (9, "G2", "Real FOCUS data in the warehouse"),
+    (14, "G3", "Dashboards and Copilot on real data"),
+    (16, "G4", "Cutover and handover"),
+]
+
+
 def gemini_cost_per_question() -> float:
     _, r_in, r_out = GEMINI["reasoning"]
     _, c_in, c_out = GEMINI["routing"]
@@ -527,6 +644,120 @@ def slide_focus_rosetta(prs, f: Facts):
         "And CommitmentDiscountStatus = 'Unused' is waste the bill states outright, not an estimate: "
         f"{money(f.commitment_waste)} on this estate.",
         10.5, False, BODY)
+    footer(s)
+
+
+def slide_effort(prs, f: Facts):
+    """Effort in person-months, split onshore/offshore and spread over four months.
+
+    No dollars. Rates are commercial, and a rate we invented on a slide would be
+    the least defensible number in the deck. Person-months multiply by whatever
+    rate card Con Edison actually has.
+    """
+    t = effort_totals()
+    s = blank(prs)
+    header(s, "Effort estimation",
+           f"{t['base']:.1f} person-months, {t['offshore_pct']:.0f}% offshore, across four months",
+           "Deliberately unaggressive. Month 1 buys access, not code — in a regulated utility that is the long pole.")
+
+    heads = ["Role", "Location", "M1", "M2", "M3", "M4", "PM", "Why staffed this way"]
+    xs = [Inches(0.7), Inches(3.15), Inches(4.25), Inches(4.8), Inches(5.35), Inches(5.9), Inches(6.5), Inches(7.3)]
+    ws = [2.4, 1.05, 0.5, 0.5, 0.5, 0.5, 0.75, 5.3]
+    for h, x, w in zip(heads, xs, ws):
+        align = PP_ALIGN.CENTER if h in ("M1", "M2", "M3", "M4", "PM") else PP_ALIGN.LEFT
+        box(s, x, Inches(2.02), Inches(w), Inches(0.24), h, 8, True, MUTED, align)
+
+    y = Inches(2.34)
+    ROW = Inches(0.315)
+    for role, loc, fte, why in EFFORT:
+        colour = AZURE if loc == "Onshore" else TEAL
+        bar(s, Inches(0.7), y + Inches(0.03), Pt(3), Inches(0.22), colour)
+        box(s, Inches(0.86), y, Inches(2.3), Inches(0.26), role, 8.5, False, INK)
+        box(s, xs[1], y, Inches(ws[1]), Inches(0.26), loc, 8, False, colour)
+        for i, v in enumerate(fte):
+            txt = f"{v:.2f}".rstrip("0").rstrip(".") if v else "—"
+            box(s, xs[2 + i], y, Inches(0.5), Inches(0.26), txt, 8, False,
+                BODY if v else RULE, PP_ALIGN.CENTER)
+        box(s, xs[6], y, Inches(0.75), Inches(0.26), f"{sum(fte):.2f}".rstrip("0").rstrip("."),
+            8.5, True, INK, PP_ALIGN.CENTER)
+        box(s, xs[7], y, Inches(5.3), Inches(0.26), why, 7.5, False, MUTED)
+        y += ROW
+
+    # Monthly totals, read from the same structure the rows came from.
+    rect(s, Inches(0.7), y + Inches(0.04), Inches(11.93), Inches(0.30), WASH)
+    box(s, Inches(0.86), y + Inches(0.06), Inches(2.3), Inches(0.26), "Team size (FTE)", 8, True, INK)
+    for i, (on, off) in enumerate(t["by_month"]):
+        box(s, xs[2 + i], y + Inches(0.06), Inches(0.5), Inches(0.26), f"{on + off:.2f}".rstrip("0").rstrip("."),
+            8, True, INK, PP_ALIGN.CENTER)
+    box(s, xs[6], y + Inches(0.06), Inches(0.75), Inches(0.26), f"{t['base']:.1f}", 8, True, INK, PP_ALIGN.CENTER)
+    peak = max(on + off for on, off in t["by_month"])
+    box(s, xs[7], y + Inches(0.06), Inches(5.3), Inches(0.26),
+        f"Peak team {peak:.2f} FTE in month 3. No month exceeds it, and nobody works a weekend to hit it.".replace(".00", ""),
+        7.5, False, MUTED)
+
+    kpi_card(s, Inches(0.7), Inches(5.75), Inches(2.85), Inches(1.0), "Onshore", f"{t['onshore']:.1f} PM",
+             f"{100 - t['offshore_pct']:.0f}% — Con Edison-facing", AZURE)
+    kpi_card(s, Inches(3.72), Inches(5.75), Inches(2.85), Inches(1.0), "Offshore", f"{t['offshore']:.1f} PM",
+             f"{t['offshore_pct']:.0f}% — build and test", TEAL)
+    kpi_card(s, Inches(6.74), Inches(5.75), Inches(2.85), Inches(1.0), "Contingency",
+             f"+{CONTINGENCY:.0%}", f"{t['contingency']:.1f} PM, held by the delivery lead", AMBER)
+    kpi_card(s, Inches(9.76), Inches(5.75), Inches(2.87), Inches(1.0), "Total", f"{t['total']:.1f} PM",
+             "Multiply by your own rate card", VIOLET)
+    footer(s, "Effort only. No rates: a rate we invented would be the least defensible number in this deck.")
+
+
+def slide_plan(prs, f: Facts):
+    """Twenty-six activities across sixteen weeks, with four gates."""
+    s = blank(prs)
+    header(s, "Delivery plan", "Twenty-six activities, sixteen weeks, four gates",
+           "Nothing downstream starts before the gate above it clears. Engineering does not wait on itself; it waits on access.")
+
+    # Grid starts at 5.25in so the activity column is 2.7in -- wide enough for the
+    # longest name at 6.8pt. At 2.1in six of them wrapped onto the row below.
+    X0, XW = Inches(5.25), Inches(7.38)      # week grid: 5.25in .. 12.63in
+    WEEK = XW / 16
+    TOP = Inches(2.42)
+    ROW = Inches(0.152)
+
+    # Month headers and week rules
+    for m in range(4):
+        x = X0 + WEEK * 4 * m
+        rect(s, x + Inches(0.02), Inches(2.02), WEEK * 4 - Inches(0.04), Inches(0.24), WASH)
+        box(s, x, Inches(2.03), WEEK * 4, Inches(0.22), f"Month {m + 1}", 8, True, MUTED, PP_ALIGN.CENTER)
+
+    rows = sum(len(a) for _, a in PLAN)
+    grid_h = ROW * rows + Inches(0.12)
+    for w in range(1, 16):
+        bar(s, X0 + WEEK * w, TOP, Pt(0.5), grid_h, RULE)
+
+    # Gates: a vertical rule and a marker, drawn under the bars.
+    for week, tag, _ in GATES:
+        gx = X0 + WEEK * week
+        bar(s, gx - Pt(1), Inches(2.28), Pt(1.5), grid_h + Inches(0.14), CRIMSON)
+        box(s, gx - Inches(0.28), Inches(2.28) - Inches(0.24), Inches(0.56), Inches(0.22), tag, 7.5, True,
+            CRIMSON, PP_ALIGN.CENTER)
+
+    y = TOP + Inches(0.06)
+    for group, acts in PLAN:
+        first = True
+        for name, w0, w1, owner in acts:
+            colour = AZURE if owner == "Onshore" else TEAL
+            if first:
+                bar(s, Inches(0.7), y, Pt(3), ROW * len(acts) - Inches(0.02), VIOLET)
+                box(s, Inches(0.85), y, Inches(1.5), Inches(0.16), group, 7.5, True, INK)
+                first = False
+            box(s, Inches(2.42), y - Inches(0.008), Inches(2.7), Inches(0.16), name, 6.8, False, BODY)
+            bx = X0 + WEEK * (w0 - 1)
+            bw = WEEK * (w1 - w0 + 1)
+            rect(s, bx + Inches(0.01), y + Inches(0.012), bw - Inches(0.02), Inches(0.11), colour)
+            y += ROW
+
+    legend_y = Inches(6.62)
+    for i, (label, colour) in enumerate((("Onshore", AZURE), ("Offshore", TEAL))):
+        bar(s, Inches(0.7) + Inches(1.3) * i, legend_y + Inches(0.06), Inches(0.16), Inches(0.10), colour)
+        box(s, Inches(0.92) + Inches(1.3) * i, legend_y, Inches(1.0), Inches(0.22), label, 8, False, BODY)
+    box(s, Inches(3.6), legend_y, Inches(9.0), Inches(0.22),
+        "   ".join(f"{tag} (wk {w}): {what}" for w, tag, what in GATES), 7.2, False, CRIMSON)
     footer(s)
 
 
@@ -1123,6 +1354,32 @@ def speaker_notes(f: Facts) -> List[str]:
            "needs the forecast. Say that order out loud so nobody expects savings in week two.",
            "The constraint is not engineering. It is how long it takes to get read access to four payers and enable "
            "four exports."),
+        # 20. Effort estimation
+        _n("Effort is in PERSON-MONTHS, not dollars. Say why, because it will be asked: a rate we invented on a "
+           "slide would be the least defensible number in this deck. These multiply by whatever rate card Con "
+           "Edison actually has.",
+           "26.5 person-months base, 70% offshore, plus 15% contingency held by the delivery lead -- 30.5 in total.",
+           "The shape is the argument. Month 1 is 5 FTE and buys almost no code: it buys read credentials on four "
+           "payers and four FOCUS exports. In a regulated utility that is the long pole, not the build. Peak is 8.25 "
+           "FTE in month 3, and no month exceeds it -- nobody works a weekend to hit this plan.",
+           "If they push for three months: the compressible part is not engineering. It is access. Offer to start the "
+           "credential and export work before the contract closes; that is the only thing that genuinely pulls the "
+           "date in.",
+           "Onshore is deliberately the client-facing and judgement work -- the architect who sets the tag taxonomy, "
+           "the analyst who reconciles our numbers against theirs, the security lead. Offshore is the build and the "
+           "test."),
+        # 21. Delivery plan
+        _n("Twenty-six activities, sixteen weeks, four gates. Blue bars are onshore, teal are offshore.",
+           "Walk the gates, not the bars. G1 at week 4: access granted and exports enabled -- everything after this "
+           "assumes it. G2 at week 9: real FOCUS data in the warehouse, which is the first moment any number on this "
+           "deck stops being synthetic. G3 at week 14: dashboards and the Copilot on real data. G4 at week 16: "
+           "cutover and hypercare.",
+           "Three sequencing decisions worth defending. The frontend does not start until the API contract is stable, "
+           "or it gets built twice. The agents do not start until the engines and real data exist, because an agent "
+           "with nothing true to say is a demo, not a product. And KPI parity against Con Edison's own reporting runs "
+           "for a month -- if our Effective Savings Rate disagrees with theirs, we need time to find out who is right.",
+           "Note what sits on the client's critical path: the credentials, the exports, the OCI endorse policy, the tag "
+           "taxonomy and the UAT. Say that plainly. Most slippage in this kind of engagement is not ours."),
         # 20. Assumptions and limits
         _n("Spend real time here. This is the slide that wins the room.",
            "The numbers are synthetic. AWS Cost Explorer does not expose list price, so on that ingest path ListCost "
@@ -1224,6 +1481,8 @@ def build(out: str) -> str:
     slide_security(prs, f)
     slide_cost(prs, f)
     slide_roadmap(prs, f)
+    slide_effort(prs, f)
+    slide_plan(prs, f)
     slide_honesty(prs, f)
     slide_next(prs, f)
 

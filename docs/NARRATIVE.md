@@ -1,7 +1,7 @@
 # Multi-Cloud FinOps on Google Cloud
 ## A presenter's narrative for Con Edison
 
-*Architecture → Features → Benefits. Twenty-one slides, about forty minutes, and one
+*Architecture → Features → Benefits. Twenty-three slides, about fifty minutes, and one
 argument carried the whole way through.*
 
 Every figure in this document is computed by `tools/build_deck.py` from the same
@@ -320,7 +320,58 @@ spreading it. Chargeback where the tags support it; showback on the remainder.
 inference**, plus Cloud Run that scales to zero and a BigQuery bill bounded by a
 partition filter. Against $16M of annual cloud spend.
 
-### What this does not claim (slide 20)
+### Effort and plan (slides 20–21)
+
+Two slides the client will study harder than any architecture diagram.
+
+**Slide 20 — Effort estimation.** 26.5 person-months of base effort, **70%
+offshore**, plus 15% contingency held by the delivery lead: **30.5 in total**.
+Stated in person-months, never in dollars. Say why, because you will be asked: a
+day rate we invented on a slide would be the least defensible number in the pack.
+These multiply by whatever rate card Con Edison actually has.
+
+The shape *is* the argument. Month 1 is five FTE and buys almost no code — it
+buys read credentials on four payers and four FOCUS exports. In a regulated
+utility that is the long pole, not the build. The team peaks at 8.25 FTE in month
+3 and no month exceeds it, so nobody works a weekend to hit this plan.
+
+Onshore is deliberately the client-facing and judgement work: the architect who
+sets the tag taxonomy, the analyst who reconciles our numbers against theirs, the
+security lead. Offshore is the build and the test.
+
+> *If they push for three months:* the compressible part is not engineering, it
+> is access. Offer to start the credential and export work before the contract
+> closes. That is the only thing that genuinely pulls the date in.
+
+**Slide 21 — Delivery plan.** Twenty-six activities, sixteen weeks, four gates.
+Blue bars are onshore, teal offshore. Walk the *gates*, not the bars:
+
+| Gate | Week | What must be true | Owner |
+|---|---|---|---|
+| **G1** | 4 | Access granted, exports enabled | **Con Edison** |
+| **G2** | 9 | Real FOCUS data in the warehouse | Joint |
+| **G3** | 14 | Dashboards and Copilot on real data | Infosys |
+| **G4** | 16 | Cutover and handover | Joint |
+
+G2 is the first moment any number in this deck stops being synthetic.
+
+Three sequencing decisions worth defending. The frontend does not start until the
+API contract is stable, or it gets built twice. The agents do not start until the
+engines and real data exist, because an agent with nothing true to say is a demo,
+not a product. And KPI parity against Con Edison's own reporting runs for a full
+month — if our Effective Savings Rate disagrees with theirs, we need time to find
+out who is right.
+
+Note what sits on the *client's* critical path: the credentials, the exports, the
+OCI endorse policy, the tag taxonomy, and UAT. Say that plainly. Most slippage in
+an engagement like this is not ours.
+
+A working `.xlsx` accompanies these slides. Every total is a live formula, the
+day-rate cells ship empty, and typing a rate populates the cost columns.
+
+---
+
+### What this does not claim (slide 22)
 
 Spend real time on this slide. It is the one that wins the room.
 
@@ -341,7 +392,7 @@ Spend real time on this slide. It is the one that wins the room.
 > *Talk track:* "Everything on the previous slides is real code producing real
 > numbers from a fake estate. Here is precisely what we have not proven."
 
-### The ask (slide 21)
+### The ask (slide 23)
 
 1. **Read access to one payer per cloud.** Not per account. Four credentials.
 2. **Enable a FOCUS export where one exists** — AWS Data Exports, Azure

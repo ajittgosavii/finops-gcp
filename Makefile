@@ -25,3 +25,9 @@ fmt:
 
 deploy:
 	gcloud builds submit --config cloudbuild.yaml --substitutions=_REGION=$(REGION) .
+
+artifacts:
+	python tools/diagrams.py
+	DATA_SOURCE=demo PYTHONPATH=services/api python tools/build_deck.py
+	DATA_SOURCE=demo PYTHONPATH=services/api python tools/build_manual.py
+	DATA_SOURCE=demo PYTHONPATH=services/api python tools/build_workbook.py
