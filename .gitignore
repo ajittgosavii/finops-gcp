@@ -19,4 +19,5 @@ build/
 # regenerates any missing PNG itself. Keeping binaries out of the repo keeps
 # diffs reviewable and the clone small.
 *.pptx
+*.docx
 docs/diagrams/

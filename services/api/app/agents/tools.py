@@ -269,7 +269,11 @@ def build_tools(repo: Repository) -> Dict[str, List[Any]]:
             return _err(str(exc)[:300])
 
     def explain_lever(lever_id: str) -> dict:
-        """Look up one optimization lever in the catalog of 53.
+        """Look up one optimization lever in the catalog.
+
+        (This said "the catalog of 53" until the catalog grew to 59. A docstring
+        is the ADK tool schema the model reads, so a stale count here is a lie
+        told to the model on every call. Counts do not belong in it.)
 
         Returns its savings range, effort, risk, time-to-value, prerequisites,
         the signal used to detect it, and a citable source URL.

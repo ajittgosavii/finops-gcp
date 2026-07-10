@@ -323,3 +323,43 @@ def test_bigquery_dimension_is_whitelisted_before_interpolation() -> None:
     repo, _ = _bq_repo()
     with pytest.raises(ValueError, match="Unknown dimension"):
         repo.monthly_by(Scope(), "cost); DROP TABLE focus_costs--")
+
+
+# ==========================================================================
+# Documentation the code owes its readers
+# ==========================================================================
+
+
+def test_every_endpoint_has_a_description() -> None:
+    """The docstring becomes the endpoint's description in OpenAPI, on the /docs
+    page, and in the generated technical manual. Thirteen of fourteen had none."""
+    from app.main import app as fastapi_app
+
+    missing = [
+        r.path for r in fastapi_app.routes
+        if hasattr(r, "methods") and r.path.startswith("/api")
+        and not (r.endpoint.__doc__ or "").strip()
+    ]
+    assert not missing, f"endpoints with no description: {missing}"
+
+
+def test_no_agent_tool_docstring_hardcodes_a_count() -> None:
+    """A tool's docstring IS the schema the model reads. `explain_lever` said
+    "the catalog of 53" long after the catalog reached 59 -- a stale number told
+    to the model on every single call. Counts do not belong in a docstring."""
+    import re
+
+    from app.agents.tools import build_tools
+    from app.repository import DemoRepository
+    from app.settings import Settings
+
+    tools = build_tools(DemoRepository(Settings(data_source="demo")))
+    offenders = []
+    for agent_tools in tools.values():
+        for t in agent_tools:
+            doc = t.__doc__ or ""
+            # Ignore the parenthetical in explain_lever that explains this rule.
+            body = re.sub(r"\(This said.*?\)", "", doc, flags=re.S)
+            if re.search(r"catalog of \d+|\b\d+ levers\b|\b\d+ connectors\b", body):
+                offenders.append(t.__name__)
+    assert not offenders, f"tool docstrings hardcode a count: {offenders}"

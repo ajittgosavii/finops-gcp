@@ -80,6 +80,7 @@ def healthz() -> dict:
 
 @app.get("/api/meta", tags=["meta"])
 def meta(r: Repository = Depends(repo)) -> dict:
+    """Dataset provenance: source, row count, period covered and the clouds present."""
     return {
         "organisation": settings.organisation,
         "environment": settings.environment,
@@ -95,6 +96,7 @@ def meta(r: Repository = Depends(repo)) -> dict:
 
 @app.get("/api/dimensions", tags=["meta"])
 def dimensions(r: Repository = Depends(repo)) -> dict:
+    """The dimensions a caller may group or filter by. This is the whitelist."""
     return r.dimensions()
 
 
@@ -105,6 +107,7 @@ def dimensions(r: Repository = Depends(repo)) -> dict:
 
 @app.get("/api/kpis", tags=["executive"])
 def kpis(scope: Scope = Depends(scope_params), r: Repository = Depends(repo)) -> dict:
+    """Executive KPIs for the scope: spend, ESR, commitment coverage, waste, allocation."""
     data = r.executive_kpis(scope)
     if not data:
         raise HTTPException(404, "No charge rows in that scope.")
@@ -113,6 +116,7 @@ def kpis(scope: Scope = Depends(scope_params), r: Repository = Depends(repo)) ->
 
 @app.get("/api/spend/monthly", tags=["executive"])
 def spend_monthly(scope: Scope = Depends(scope_params), r: Repository = Depends(repo)) -> dict:
+    """Amortised spend per month for the scope."""
     df = r.monthly(scope)
     return {"rows": df.assign(period=df["period"].astype(str)).to_dict("records") if len(df) else []}
 
@@ -123,6 +127,7 @@ def spend_by(
     scope: Scope = Depends(scope_params),
     r: Repository = Depends(repo),
 ) -> dict:
+    """Amortised spend grouped by one whitelisted dimension."""
     try:
         col = resolve_dimension(dimension)
     except ValueError as exc:
@@ -157,6 +162,7 @@ def forecast(
     scope: Scope = Depends(scope_params),
     r: Repository = Depends(repo),
 ) -> ForecastResponse:
+    """24-month forecast, with the commitment-expiry cliff overlaid."""
     monthly = r.monthly(scope)
     if len(monthly) < 3:
         raise HTTPException(400, "Not enough history to forecast.")
@@ -200,6 +206,7 @@ def opportunities(
     scope: Scope = Depends(scope_params),
     r: Repository = Depends(repo),
 ) -> dict:
+    """Detected optimization opportunities, read from the nightly snapshot."""
     df = r.opportunities(scope)
     if df is None or df.empty:
         return {"count": 0, "total_annual_savings": 0.0, "rows": []}
@@ -215,12 +222,14 @@ def opportunities(
 
 @app.get("/api/optimize/levers", tags=["optimize"])
 def levers() -> dict:
+    """The full optimization lever catalog."""
     return {"count": len(optimize_engine.LEVERS),
             "rows": optimize_engine.lever_catalog_frame().to_dict("records")}
 
 
 @app.get("/api/optimize/levers/{lever_id}", tags=["optimize"])
 def lever(lever_id: str) -> dict:
+    """One optimization lever: savings band, effort, risk, prerequisites and source."""
     lv = optimize_engine.LEVER_BY_ID.get(lever_id.upper())
     if not lv:
         raise HTTPException(404, f"Unknown lever {lever_id!r}")
@@ -243,6 +252,7 @@ def anomalies(
     scope: Scope = Depends(scope_params),
     r: Repository = Depends(repo),
 ) -> dict:
+    """Spend anomalies: statistically odd AND financially material."""
     try:
         col = resolve_dimension(dimension)
     except ValueError as exc:
@@ -263,6 +273,7 @@ def allocation(
     scope: Scope = Depends(scope_params),
     r: Repository = Depends(repo),
 ) -> dict:
+    """Showback and chargeback: all cost allocated to one dimension."""
     if method not in allocation_engine.ALLOCATION_METHODS:
         raise HTTPException(400, f"method must be one of {allocation_engine.ALLOCATION_METHODS}")
     try:
@@ -283,6 +294,7 @@ def allocation(
 
 @app.get("/api/governance/coverage", tags=["governance"])
 def coverage(scope: Scope = Depends(scope_params), r: Repository = Depends(repo)) -> dict:
+    """How much spend carries an owner, and how much does not."""
     df = r.charges(scope)
     if df.empty:
         return {"rows": []}
@@ -302,6 +314,7 @@ class AskRequest(BaseModel):
 
 @app.get("/api/agent/team", tags=["agent"])
 def agent_team() -> dict:
+    """The agent team: the coordinator, its specialists and the tools each may call."""
     from app.agents.team import agent_cards
 
     return {"enabled": settings.ai_enabled, "agents": agent_cards()}
