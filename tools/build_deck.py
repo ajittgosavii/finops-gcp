@@ -328,7 +328,18 @@ def style_chart(chart, colours, legend=False, fmt='#,##0,,"M"'):
         pass
 
 
-def diagram(prs, name, eyebrow, title, sub, note):
+def diagram(prs, name, eyebrow, title, sub, note, reads=()):
+    """A diagram, with a "How to read it" rail in the dead space beside it.
+
+    The diagrams are 16:10-ish, so the 4.6in height cap binds first and the
+    picture only ever fills ~7 of the slide's 13.3 inches. Three inches of white
+    on each side were doing nothing. Left-aligning the picture buys the rail for
+    free: the diagram does not shrink by a pixel.
+
+    `reads` is up to three (heading, sentence) pairs -- the things a reader
+    cannot get from the picture alone. If a wider picture leaves no room, we
+    centre it and drop the rail rather than let the two overlap.
+    """
     import diagrams as dg
 
     png = os.path.join(dg.OUT_DIR, f"{name}.png")
@@ -343,7 +354,23 @@ def diagram(prs, name, eyebrow, title, sub, note):
         iw, ih = im.size
     scale = min(Inches(12.1) / iw, Inches(4.6) / ih)
     w, h = int(iw * scale), int(ih * scale)
-    s.shapes.add_picture(png, int((W - w) / 2), Inches(2.05), w, h)
+    GUTTER, RAIL_MIN, RIGHT = Inches(0.4), Inches(3.4), Inches(12.63)
+    rail_x = Inches(0.7) + w + GUTTER
+    rail_w = RIGHT - rail_x
+
+    if reads and rail_w >= RAIL_MIN:
+        s.shapes.add_picture(png, Inches(0.7), Inches(2.05), w, h)
+        box(s, rail_x, Inches(2.05), rail_w, Inches(0.3), "HOW TO READ IT", 9, True, MUTED)
+        y = Inches(2.52)
+        for head, text in reads[:3]:
+            bar(s, rail_x, y + Inches(0.06), Pt(3), Inches(0.20), TEAL)
+            box(s, rail_x + Inches(0.13), y, rail_w - Inches(0.13), Inches(0.28), head, 10.5, True, INK)
+            box(s, rail_x + Inches(0.13), y + Inches(0.31), rail_w - Inches(0.13), Inches(0.95),
+                text, 9.5, False, BODY)
+            y += Inches(1.34)
+    else:
+        s.shapes.add_picture(png, int((W - w) / 2), Inches(2.05), w, h)
+
     box(s, Inches(0.7), Inches(6.72), Inches(10.4), Inches(0.3), note, 9, False, MUTED)
     box(s, Inches(10.9), Inches(6.72), Inches(1.8), Inches(0.3), f"docs/diagrams/{name}.svg", 8, False, MUTED, PP_ALIGN.RIGHT)
     footer(s)
@@ -910,6 +937,221 @@ def slide_next(prs, f: Facts):
 # ==========================================================================
 
 
+# ==========================================================================
+# Speaker notes
+#
+# The deck gets emailed. Whoever opens it will not have the presenter, so every
+# slide carries the argument in its notes pane -- visible in PowerPoint's notes
+# view, in Presenter View, and on printed notes pages.
+#
+# Held in ONE list, in build order, rather than scattered through twenty slide
+# functions, because a note attached to the wrong slide is worse than no note.
+# `_attach_notes` asserts the count matches, and a test asserts every slide has
+# a substantive one.
+# ==========================================================================
+
+
+def _n(*paragraphs: str) -> str:
+    return "\n\n".join(p.strip() for p in paragraphs)
+
+
+def speaker_notes(f: Facts) -> List[str]:
+    return [
+        # 1. Title
+        _n("Open with the through-line, not the agenda: you cannot manage what you cannot compare. "
+           "Four clouds speak four languages, so before you can save a dollar you have to agree what a dollar is.",
+           "Everything in this deck is downstream of that one sentence. The platform's first act is translation, "
+           "and the translation is a published open standard rather than an Infosys invention.",
+           "Say early that the numbers come from a SYNTHETIC utility estate, not Con Edison's bill. "
+           "Volunteering it costs nothing; being caught by it costs the room."),
+        # 2. The problem
+        _n("Four clouds means four billing schemas. AWS calls a row a lineItem, Azure a meter, Google a sku, "
+           "Oracle a cost report entry. A 'reservation' in one is a 'savings plan' in another and a "
+           "'committed use discount' in a third. None of them agree on what an amortised dollar is.",
+           "The consequence is not that reporting is hard. It is that reporting is OPINIONATED. Somebody wrote a "
+           "spreadsheet formula that decides what your Effective Savings Rate is, and nobody has read it in two years.",
+           "Talk track: 'Ask your team what your commitment coverage is across all four clouds. You will get an "
+           "answer. Now ask two people separately.'"),
+        # 3. The approach
+        _n("This slide is the procurement argument: all four providers emit FOCUS natively today, and so do several "
+           "of the tools you might buy. So adopting a FinOps platform later is one connector class, not a rebuild.",
+           f"{f.n_connectors} connectors ship: 4 native clouds, 12 procured tools, any FOCUS file, plus the demo source.",
+           "Talk track: 'We did not invent a schema and ask you to trust it. We adopted the one the FinOps "
+           "Foundation published and the four hyperscalers already emit.'"),
+        # 4. What FOCUS actually is
+        _n("The previous slide said WHO emits FOCUS. This one says what it IS, because otherwise the room nods and "
+           "leaves none the wiser.",
+           "Walk one row: the same committed compute hour, written four ways, collapsing into three named columns. "
+           "Each FOCUS card sits directly under the vendor column it replaces -- read it by position.",
+           "Then the only formula in the deck: Effective Savings Rate = (ListCost - EffectiveCost) / ListCost. "
+           "Defined once, in one function, for all four clouds.",
+           f"Finish on the last line: CommitmentDiscountStatus = 'Unused' is waste the bill STATES OUTRIGHT -- "
+           f"{money(f.commitment_waste)} here. Not a model. The invoice says you bought capacity and used none of it.",
+           "If an architect pushes on the vendor column names: this slide is deliberately concept-level. Google is "
+           "mid-schema-change on its detailed export. The exact mappings are in the connector source and we will "
+           "walk them through it."),
+        # 5. HLD
+        _n("Read the six bands DOWNWARD. A dollar enters at the top as a vendor bill and leaves at the bottom as an "
+           "answer on someone's screen.",
+           "Do not narrate boxes -- trace one dollar. 'An EC2 charge lands Tuesday. Wednesday at 03:15 the Job pulls "
+           "it, turns it into a FOCUS row, keeps the raw file for replay, and writes it to the warehouse. By the time "
+           "anyone opens the Executive page, that charge is indistinguishable from an Azure or an Oracle one.'",
+           "Two details worth pointing at. The FOCUS-file arrow SKIPS the Identity band -- a CSV someone hands you "
+           "needs no credential. And Cloud Storage exists as the replay source: fix a transform six months from now "
+           "and you re-run against landed files instead of re-pulling four vendors' bills.",
+           "The sentence for this slide: everything narrows to one table, and nothing above that table has ever seen "
+           "a vendor-specific field."),
+        # 6. End user view
+        _n("Three tiers. Top row is the journey any human takes. Middle row is five personas -- the FinOps "
+           "Foundation's, not ours. Bottom maps each persona to the pages that answer THEIR question, not every page "
+           "they are permitted to open.",
+           "Make it personal. Look around the table and ask 'who here is Finance?', then trace their row. People stop "
+           "evaluating a diagram the moment they find themselves in it.",
+           "Two ideas carry the slide. One scope -- cloud, application, business unit, environment, period -- governs "
+           "every panel on a page, so two charts on the same screen cannot disagree. And every chart has a table twin "
+           "with a CSV behind it, so no value is reachable only by hovering a tooltip.",
+           "Be honest about the first box: sign-in is TARGET STATE. IAP is not in the Terraform and the API ships "
+           "today with no auth. It goes in before any real bill does."),
+        # 7. LLD
+        _n("This is the trust slide, and the slide for their architects. If there are no architects in the room, give "
+           "it ninety seconds and offer the deep dive offline. Nothing loses a CFO faster than a partition predicate.",
+           "Left to right, then drop to the bottom row. The red dashed box is the SQL boundary: a VALUE in a query "
+           "can be parameterised safely, but a COLUMN NAME cannot -- it has to be interpolated into the SQL text. So "
+           "an unchecked dimension string is an injection vector. We whitelist instead.",
+           "Lead with the failure modes. The cost guards make queries FAIL: no date bound and the query fails rather "
+           "than scanning two years; over budget and it fails rather than arriving as an invoice. Vendors boast about "
+           "what their system does. Almost nobody boasts about what it refuses to do. That is the line they remember.",
+           "Note what is MISSING from the request-time engines: optimize.detect_all(). It is the nightly Job. Running "
+           "59 row-level detectors on every dashboard load would scan the whole table for an answer that changes once "
+           "a day.",
+           "Then land the dashed arrow from tools.py back up into the engines. That single line is the whole trust "
+           "argument: the agents call the same functions the REST API calls. The Copilot cannot quote a number the "
+           "dashboard disagrees with, because it is literally the same number."),
+        # 8. Connecting the clouds
+        _n("The question every CIO asks: how many credentials? One per PAYER, not one per account. Four.",
+           "A second credential means a second payer -- which a regulated utility does have, because regulated and "
+           "unregulated entities cannot share a bill.",
+           "Be straight about OCI, unprompted. AWS and Azure federate through Workload Identity: nothing stored, "
+           "nothing to rotate. OCI has NO such path -- its SDK signs every request with an RSA key, so exactly one "
+           "key exists, it lives in Secret Manager, and somebody has to rotate it. And Oracle owns the bucket the "
+           "reports sit in: tenancy admin is not enough, you must 'endorse' your group into Oracle's reporting "
+           "tenancy.",
+           "Saying this before they find it buys more credibility than any slide in the deck."),
+        # 9. Streamlit vs GCP
+        _n("The client is aligned to GCP, so this slide exists to say what actually changes -- and what does not.",
+           "The engines are identical. The same ~9,100 lines of FOCUS normalisation, KPI formulae, forecasting, "
+           "allocation and the optimization detectors run in both, because they were written without a single "
+           "Streamlit import.",
+           "The Streamlit app is not thrown away. It stays as the reference implementation and the demo surface, and "
+           "a bug fixed in one is fixed in both."),
+        # 10. Why rebuild
+        _n("The rebuild was NEVER about the user interface. It was pandas.",
+           f"The demo estate is {f.rows:,} rows at roughly 650 bytes each. Con Edison at ~500,000 line-items a month "
+           "across 24 months is about 8 GB in a single process, and Streamlit loads the whole frame on every session. "
+           "At 2M line-items a month it is 31 GB. There is no version of that which works.",
+           "BigQuery pushes the aggregation into SQL. A query for 'last month' reads one month's partition."),
+        # 11. The agents
+        _n("A coordinator routes on the cheap model; four specialists reason on the flagship. Analyst (what was "
+           "spent), Forecaster (where it is heading), Optimizer (what to do), Governor (tagging and chargeback).",
+           "Two decisions to defend. The specialists are TOOLS, not sub-agents: handing control to a sub-agent means "
+           "the last one to speak writes the answer, in its own register. A FinOps question spans domains and the "
+           "answer must arrive in one voice, pitched at one persona. So the coordinator keeps the floor.",
+           "And the agents are never given SQL. ADK ships a BigQuery execute_sql toolset; we deliberately do not use "
+           "it. Hand a model SQL and it will invent its own Effective Savings Rate -- drop the on-demand denominator, "
+           "count Purchase rows -- and the answer comes back plausible, wrong, and uncaught.",
+           "The sentence: it cannot compute. It can only ask."),
+        # 12. Agent cost
+        _n(f"Measured, not guessed: ${gemini_cost_per_question():.3f} per question, about "
+           f"${gemini_cost_per_question()*QUESTIONS_PER_MONTH:,.0f} a month at {QUESTIONS_PER_MONTH:,} questions.",
+           "If asked why not GPT-5: on this workload Gemini is roughly 10% MORE expensive per question. We chose it "
+           "for the identity story -- Application Default Credentials on the service account, so no model API key "
+           "exists anywhere to leak. That is worth ten dollars a month."),
+        # 13. Executive view
+        _n("Say it here, before anyone asks: these figures come from a SYNTHETIC 24-month utility estate shipped with "
+           "the platform. Nothing on this slide is Con Edison's bill. Wave 1 replaces them.",
+           f"The whole FinOps conversation is in two numbers: coverage at {f.coverage:.1f}% with utilisation at "
+           f"{f.utilization:.1f}%. You are using well what little you have committed. You have not committed enough.",
+           f"Cost of waste is {money(f.cost_of_waste)}, {f.waste_pct:.1f}% of spend. Allocation coverage is "
+           f"{f.allocation:.1f}% -- the platform NAMES the {money(f.spend*(1-f.allocation/100))} that has no owner "
+           "rather than silently spreading it."),
+        # 14. Forecast
+        _n(f"The trend model says {money(f.fc_total)} over 24 months. The platform also overlays commitment expiry: "
+           f"when a term ends, the rate snaps back to on-demand.",
+           f"Actual exposure is {money(f.fc_with_cliffs)} -- a {money(f.fc_with_cliffs - f.fc_total)} difference that "
+           f"a trend line walks straight through without seeing. The cliff lands in "
+           f"{', '.join(f.cliff_months) if f.cliff_months else 'the forecast window'}.",
+           f"Forecast accuracy is a {f.fc_wape:.2f}% WAPE, which the FinOps Framework grades {f.fc_maturity.lower()}.",
+           "Talk track: 'Every forecasting tool you have been shown draws this line. Ask the next vendor what happens "
+           "to it at the cliff.'"),
+        # 15. Optimize
+        _n(f"{money(f.savings_total)} identified across {f.n_opps} opportunities -- about 34% of annual run-rate. "
+           f"Fully taken, Effective Savings Rate moves from {f.esr_uplift[0]:.1f}% to {f.esr_uplift[1]:.1f}%.",
+           "The point to make: the top item on every cloud is a RATE lever, and every one of them is low effort. The "
+           "first million dollars requires no engineer to change any code.",
+           "Two OCI levers are genuinely Oracle-specific and no generic tool models them. BYOL to OCI is the actual "
+           "economic argument for running Oracle workloads on Oracle's cloud. Oracle Support Rewards accrues against "
+           "the Oracle SUPPORT invoice, not the cloud bill -- we surface it because the money is real, and we never "
+           "net it off cloud spend, because it is a different budget line and often a different owner."),
+        # 16. Anomalies
+        _n(f"{f.anomaly_count} anomalies, not three hundred. A point must be BOTH statistically odd AND financially "
+           "material: STL decomposition, a modified z-score on the residual, and a dollar floor.",
+           "This is the credibility slide. An earlier build flagged 347 anomalies and graded 318 of them 'good', "
+           "because it took the statistical test from one method and the severity from another and never reconciled "
+           "them. In a low-variance series a 5% wobble scores a z of 6. We found it. That is why the number here is "
+           f"{f.anomaly_count}.",
+           "Volunteering a bug you found in your own product is the single most persuasive thing you can do in a "
+           "vendor meeting."),
+        # 17. Security
+        _n("Read-only throughout. Federated for AWS and Azure -- nothing stored, nothing to rotate.",
+           "Then the exception, said plainly: OCI signs with an RSA key, so that one key lives in Secret Manager and "
+           "does need rotation. There is no Workload Identity path from Google Cloud to OCI Object Storage.",
+           "Cost-bounded by construction: a runaway query fails rather than bills. And no model API key exists "
+           "anywhere, because Vertex uses the service account's own identity."),
+        # 18. Run cost
+        _n("Order the benefits by who in the room cares. CFO: a number you can defend, traceable to one function in "
+           "one file. CIO: no new lock-in, an open specification rather than our schema. FinOps team: the argument "
+           "ends, because there is one definition. Business units: a bill they recognise.",
+           "The platform costs on the order of a hundred dollars a month in model inference, plus Cloud Run that "
+           "scales to zero and a BigQuery bill bounded by a partition filter. Against sixteen million dollars of "
+           "annual cloud spend."),
+        # 19. Delivery
+        _n("Wave 1 is the executive view and allocation on real data. The forecast needs history, and the optimizer "
+           "needs the forecast. Say that order out loud so nobody expects savings in week two.",
+           "The constraint is not engineering. It is how long it takes to get read access to four payers and enable "
+           "four exports."),
+        # 20. Assumptions and limits
+        _n("Spend real time here. This is the slide that wins the room.",
+           "The numbers are synthetic. AWS Cost Explorer does not expose list price, so on that ingest path ListCost "
+           "is set equal to BilledCost and Effective Savings Rate comes out UNDERSTATED -- we would rather tell you "
+           "the number is conservative than have you discover it. Sign-in is target state; IAP is not in the "
+           "Terraform. The OCI connector has never run against a live tenancy: its shape is tested, its network path "
+           "is not.",
+           "And a cloud bill cannot contain a budget or a business driver. Those come from Con Edison. Those "
+           "functions return empty rather than inventing plausible numbers.",
+           "Talk track: 'Everything on the previous slides is real code producing real numbers from a fake estate. "
+           "Here is precisely what we have not proven.'"),
+        # 21. Next steps
+        _n("Four asks. Read access to one payer per cloud -- not per account. Enable a FOCUS export where one exists, "
+           "because that is what makes the savings-rate number correct rather than conservative. A GCP project with "
+           "Workload Identity Federation to AWS and Azure, and an 'endorse' policy into Oracle's reporting tenancy.",
+           "And two names: who owns the tag taxonomy, and who owns the commitment portfolio. The platform will tell "
+           "them what to do. It cannot tell them it is their job.",
+           "Close on: 'We are not asking you to trust our schema, our savings estimate, or our agents. We are asking "
+           "you to point four read-only credentials at a warehouse whose every number is computed once, in code you "
+           "can read, against a standard you did not have to take our word for.'"),
+    ]
+
+
+def _attach_notes(prs, notes: List[str]) -> None:
+    if len(notes) != len(prs.slides._sldIdLst):
+        raise AssertionError(
+            f"{len(notes)} speaker notes for {len(prs.slides._sldIdLst)} slides. "
+            "A note on the wrong slide is worse than no note -- fix the list, in build order."
+        )
+    for slide, text in zip(prs.slides, notes):
+        slide.notes_slide.notes_text_frame.text = text
+
+
 def build(out: str) -> str:
     f = gather()
     prs = Presentation()
@@ -922,19 +1164,51 @@ def build(out: str) -> str:
     diagram(prs, "hld", "High level design",
             "Four clouds, one FOCUS warehouse, one control plane",
             "Sources · Identity · Ingest · Warehouse · Serving · Experience",
-            "Vector source: docs/diagrams/hld.svg")
+            "Vector source: docs/diagrams/hld.svg",
+            reads=[
+                ("Read it downward",
+                 "A dollar enters at the top as a vendor bill and leaves at the bottom as an answer on a screen."),
+                ("The FOCUS file skips Identity",
+                 "A CSV someone hands you needs no credential. Everything else must first prove who it is."),
+                ("Cloud Storage is the replay source",
+                 "Raw FOCUS Parquet is kept, so a transform fixed later is re-run without re-pulling four vendors' bills."),
+            ])
     diagram(prs, "end_user_view", "End user view",
             "Who asks what, and where the answer lives",
             "Five personas, nine pages, one scope that governs every panel",
-            "Vector source: docs/diagrams/end_user_view.svg")
+            "Vector source: docs/diagrams/end_user_view.svg",
+            reads=[
+                ("The top row is the journey",
+                 "Sign in, set a scope, read a page, drill into a chart, ask the Copilot."),
+                ("One scope governs every panel",
+                 "Cloud, application, business unit, environment, period — chosen once. Two charts on a page cannot disagree."),
+                ("Sign-in is target state",
+                 "IAP is not yet in the Terraform and the API ships today with no auth. It lands before any real bill does."),
+            ])
     diagram(prs, "lld", "Low level design",
             "One request, and one question, through the system",
             "Where the scope becomes SQL, where the cost guards bite, and why the model never sees a query",
-            "Vector source: docs/diagrams/lld.svg")
+            "Vector source: docs/diagrams/lld.svg",
+            reads=[
+                ("The red box is the SQL boundary",
+                 "A value can be parameterised. A column name cannot — it is interpolated. So dimensions are whitelisted, never trusted."),
+                ("The guards make queries fail",
+                 "No date bound and the query fails rather than scanning two years. Over budget and it fails rather than billing."),
+                ("Follow the dashed arrow up",
+                 "The agents call the same engines the REST API calls. The Copilot cannot quote a number the dashboard disagrees with."),
+            ])
     diagram(prs, "cloud_onboarding", "Connecting the clouds",
             "One credential per payer, not one per account",
             "How AWS, Azure, Google Cloud and OCI each aggregate billing",
-            "Vector source: docs/diagrams/cloud_onboarding.svg")
+            "Vector source: docs/diagrams/cloud_onboarding.svg",
+            reads=[
+                ("One credential per payer",
+                 "Not one per account. Four in total. A second credential means a second payer — a regulated utility has several."),
+                ("OCI is the exception",
+                 "No Workload Identity path exists to it. One RSA signing key lives in Secret Manager, and it must be rotated."),
+                ("Oracle owns the report bucket",
+                 "Tenancy admin is not enough. You must 'endorse' your group into Oracle's reporting tenancy."),
+            ])
     slide_comparison(prs, f)
     slide_why_rebuild(prs, f)
     slide_agents(prs, f)
@@ -948,6 +1222,8 @@ def build(out: str) -> str:
     slide_roadmap(prs, f)
     slide_honesty(prs, f)
     slide_next(prs, f)
+
+    _attach_notes(prs, speaker_notes(f))
 
     prs.save(out)
     return out

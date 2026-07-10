@@ -39,9 +39,12 @@ jobs:
 
       # The diagrams name React routes, Python modules and counts. A rename would
       # leave them quietly wrong, and a client reads a diagram as documentation.
-      - name: diagrams
+      # The deck tests assert nothing falls off a slide and every slide carries
+      # speaker notes -- install python-pptx and Pillow, or they importorskip and
+      # the guard silently never runs.
+      - name: diagrams and deck
         run: |
-          pip install matplotlib
+          pip install matplotlib python-pptx pillow
           DATA_SOURCE=demo PYTHONPATH=services/api pytest tools
 
   # A pin that has no wheel for a target interpreter forces a source build, which
