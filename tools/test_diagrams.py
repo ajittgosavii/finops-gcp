@@ -12,6 +12,7 @@ from __future__ import annotations
 
 import importlib
 import os
+import re
 import sys
 
 import pytest
@@ -23,10 +24,10 @@ sys.path.insert(0, os.path.join(ROOT, "packages", "finops-core", "src"))
 pytest.importorskip("matplotlib")
 import diagrams as dg  # noqa: E402
 
-EXPECTED = {"hld", "end_user_view", "lld", "cloud_onboarding"}
+EXPECTED = {"hld", "end_user_view", "lld", "lld_technical", "cloud_onboarding"}
 
 
-def test_the_four_views_render_to_svg_and_png(tmp_path, monkeypatch) -> None:
+def test_every_view_renders_to_svg_and_png(tmp_path, monkeypatch) -> None:
     monkeypatch.setattr(dg, "OUT_DIR", str(tmp_path))
     built = dg.build_all()
     assert set(built) == EXPECTED
@@ -105,7 +106,10 @@ def test_agent_tool_count_on_the_low_level_diagram_is_real() -> None:
     distinct = {t.__name__ for tools in tools_by_agent.values() for t in tools}
 
     src = open(os.path.join(ROOT, "tools", "diagrams.py"), encoding="utf-8").read()
-    assert f"{len(distinct)} typed tools" in src, f"the LLD names a tool count; there are {len(distinct)}"
+    # The module-level diagram says "11 typed tools"...
+    assert f"{len(distinct)} typed tools" in src, f"lld_technical names a tool count; there are {len(distinct)}"
+    # ...and the plain-language one says "may only call 11 approved questions".
+    assert f"only call {len(distinct)}" in src, f"lld names a tool count; there are {len(distinct)}"
 
 
 # ==========================================================================
@@ -156,3 +160,29 @@ def test_the_deck_and_the_diagrams_share_one_text_palette() -> None:
         deck = getattr(bd, name)   # RGBColor stringifies to bare hex, e.g. "0B142A"
         diag = getattr(dg, name)   # diagrams.py stores "#0B142A"
         assert f"#{deck}".lower() == diag.lower(), f"{name}: deck #{deck} vs diagram {diag}"
+
+
+def test_math_parsing_is_off() -> None:
+    """A label containing money has two dollar signs in it. With `text.parse_math`
+    on -- matplotlib's default -- the pair is read as math mode: both signs are
+    stripped, the words between them are italicised and run together, and the
+    label is emitted as glyph PATHS rather than a <text> node.
+
+    So the slide reads "a 5billinsteadofa500 one", AND the SVG stops being
+    editable text, which is the entire reason we ship SVG. Off is the fix.
+    """
+    assert dg.matplotlib.rcParams["text.parse_math"] is False
+
+
+def test_a_label_containing_money_survives_as_editable_text(tmp_path, monkeypatch) -> None:
+    """Asserts the rendered artifact, not the source. This is the check that
+    distinguishes the two renders: with math parsing on, the phrase never appears
+    inside a <text> element at all."""
+    monkeypatch.setattr(dg, "OUT_DIR", str(tmp_path))
+    svg = open(dg.lld()[0], encoding="utf-8").read()
+
+    text_nodes = re.findall(r"<text[^>]*>([^<]*)</text>", svg)
+    assert any("$5 bill instead of a $500 one." in t for t in text_nodes), (
+        "the money label is not a <text> node -- math parsing has eaten it"
+    )
+    assert "billinsteadofa" not in svg

@@ -1013,20 +1013,24 @@ def speaker_notes(f: Facts) -> List[str]:
            "Be honest about the first box: sign-in is TARGET STATE. IAP is not in the Terraform and the API ships "
            "today with no auth. It goes in before any real bill does."),
         # 7. LLD
-        _n("This is the trust slide, and the slide for their architects. If there are no architects in the room, give "
-           "it ninety seconds and offer the deep dive offline. Nothing loses a CFO faster than a partition predicate.",
-           "Left to right, then drop to the bottom row. The red dashed box is the SQL boundary: a VALUE in a query "
-           "can be parameterised safely, but a COLUMN NAME cannot -- it has to be interpolated into the SQL text. So "
-           "an unchecked dimension string is an injection vector. We whitelist instead.",
-           "Lead with the failure modes. The cost guards make queries FAIL: no date bound and the query fails rather "
-           "than scanning two years; over budget and it fails rather than arriving as an invoice. Vendors boast about "
-           "what their system does. Almost nobody boasts about what it refuses to do. That is the line they remember.",
-           "Note what is MISSING from the request-time engines: optimize.detect_all(). It is the nightly Job. Running "
-           "59 row-level detectors on every dashboard load would scan the whole table for an answer that changes once "
-           "a day.",
-           "Then land the dashed arrow from tools.py back up into the engines. That single line is the whole trust "
-           "argument: the agents call the same functions the REST API calls. The Copilot cannot quote a number the "
-           "dashboard disagrees with, because it is literally the same number."),
+        _n("This slide used to show the plumbing -- correct, and unreadable to anyone who did not already know the "
+           "system. It now shows what happens, twice.",
+           "Blue row: someone opens a dashboard. They pick what they are looking at; the app turns that into one "
+           "carefully-checked question; the warehouse reads only that slice; the finance maths runs; they get a chart "
+           "with the table behind it.",
+           "Green row: someone asks the Copilot. They ask in plain English; a cheap model picks the right specialist; "
+           "that specialist may only call 11 approved questions and CANNOT write a database query; those questions run "
+           "the same maths; the answer names the tool each figure came from.",
+           "Then point at the dashed line between the two rows. Step 4 is literally the same function. That is the "
+           "entire trust argument, and it is the sentence to say aloud: the Copilot cannot quote a number the "
+           "dashboard disagrees with, because it is the same number.",
+           "The three red boxes are the safety rules. Lead with the fact that two of them make things FAIL: a filter "
+           "name that is not on the approved list never reaches the database, and a query with no date range is "
+           "refused rather than run -- that is a $5 bill instead of a $500 one. Vendors boast about what a system "
+           "does. Almost nobody boasts about what it refuses to do.",
+           "The bold line in each step is the story; the grey line beneath it is the engineering name. Executives read "
+           "one, architects read the other, and nobody has to sit through the other's slide. If they want the "
+           "module-level view, it ships as docs/diagrams/lld_technical.svg."),
         # 8. Connecting the clouds
         _n("The question every CIO asks: how many credentials? One per PAYER, not one per account. Four.",
            "A second credential means a second payer -- which a regulated utility does have, because regulated and "
@@ -1163,11 +1167,11 @@ def build(out: str) -> str:
     slide_focus_rosetta(prs, f)
     diagram(prs, "hld", "High level design",
             "Four clouds, one FOCUS warehouse, one control plane",
-            "Sources · Identity · Ingest · Warehouse · Serving · Experience",
+            "Read it downward: a bill enters at the top, and leaves at the bottom as an answer on someone's screen.",
             "Vector source: docs/diagrams/hld.svg",
             reads=[
-                ("Read it downward",
-                 "A dollar enters at the top as a vendor bill and leaves at the bottom as an answer on a screen."),
+                ("Each band says what it is for",
+                 "The grey line at the top of every layer explains it in one sentence. Read those five and you have the system."),
                 ("The FOCUS file skips Identity",
                  "A CSV someone hands you needs no credential. Everything else must first prove who it is."),
                 ("Cloud Storage is the replay source",
@@ -1175,27 +1179,27 @@ def build(out: str) -> str:
             ])
     diagram(prs, "end_user_view", "End user view",
             "Who asks what, and where the answer lives",
-            "Five personas, nine pages, one scope that governs every panel",
+            "Pick what you are looking at once, and every chart on the page obeys it. So two charts can never disagree.",
             "Vector source: docs/diagrams/end_user_view.svg",
             reads=[
                 ("The top row is the journey",
-                 "Sign in, set a scope, read a page, drill into a chart, ask the Copilot."),
-                ("One scope governs every panel",
-                 "Cloud, application, business unit, environment, period — chosen once. Two charts on a page cannot disagree."),
+                 "Sign in, choose what you are looking at, read a page, open the table behind a chart — or just ask."),
+                ("Read a column downward",
+                 "This is the person, this is what they want to know, and these are the pages that answer it."),
                 ("Sign-in is target state",
                  "IAP is not yet in the Terraform and the API ships today with no auth. It lands before any real bill does."),
             ])
     diagram(prs, "lld", "Low level design",
-            "One request, and one question, through the system",
-            "Where the scope becomes SQL, where the cost guards bite, and why the model never sees a query",
-            "Vector source: docs/diagrams/lld.svg",
+            "What actually happens when someone asks a question",
+            "Two paths through the system. They end at the same numbers — which is the whole point.",
+            "Vector source: docs/diagrams/lld.svg  ·  module detail: lld_technical.svg",
             reads=[
-                ("The red box is the SQL boundary",
-                 "A value can be parameterised. A column name cannot — it is interpolated. So dimensions are whitelisted, never trusted."),
-                ("The guards make queries fail",
-                 "No date bound and the query fails rather than scanning two years. Over budget and it fails rather than billing."),
-                ("Follow the dashed arrow up",
-                 "The agents call the same engines the REST API calls. The Copilot cannot quote a number the dashboard disagrees with."),
+                ("Two paths, one answer",
+                 "The blue row is someone opening a dashboard. The green row is someone asking the Copilot."),
+                ("They meet at step 4",
+                 "Step 4 is literally the same function in both rows. That is why the Copilot cannot contradict your chart."),
+                ("The bold line is the story",
+                 "The grey line beneath each step is the engineering name, for whoever wants it. Nobody has to read both."),
             ])
     diagram(prs, "cloud_onboarding", "Connecting the clouds",
             "One credential per payer, not one per account",

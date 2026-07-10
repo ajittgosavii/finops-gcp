@@ -107,13 +107,16 @@ source, and we will walk them through it.
 
 ### The architecture (slides 5–8)
 
-Four diagrams, deliberately in this order. Each ships as **editable SVG** in
+Four diagrams, deliberately in this order. Each is written for two readers at once:
+the bold line is the story, the grey line beneath it is the engineering name. Each ships as **editable SVG** in
 `docs/diagrams/` — the labels are real text, so your architects can open them in
 Figma and retype a box.
 
-**Slide 5 — High level design.** Six layers, read downward: Sources, Identity,
-Ingest, Warehouse, Serving, Experience. The shape of the argument: everything
-narrows to one FOCUS table, and everything above that table is provider-blind.
+**Slide 5 — High level design.** Six layers, read downward, and each one carries
+a grey line saying in plain English what it is *for* — where the bills come from,
+how we are allowed to read them, and so on. Read those five sentences and you have
+the system. The shape of the argument: everything narrows to one FOCUS table, and
+everything above that table is provider-blind.
 
 **Slide 6 — End user view.** Five personas, nine pages. Leadership does not want
 the same page as an engineer, and neither of them should have to construct a
@@ -121,17 +124,39 @@ query to get an answer. One scope — cloud, application, business unit,
 environment, period — governs every panel on a page, so no two charts on the same
 screen can disagree.
 
-**Slide 7 — Low level design.** This is the slide for their architects, and it
-carries three claims worth defending:
+**Slide 7 — Low level design.** Not the plumbing. Two stories, side by side.
 
-- **The scope becomes a SQL identifier.** Dimensions are whitelisted, never
-  interpolated. Unchecked strings in an identifier position are injection.
-- **The cost guards live in the DDL, not in convention.** `require_partition_filter`
-  means a query with no bound on the partition key *fails* rather than scanning
-  two years. `maximum_bytes_billed` means a runaway query fails rather than
-  arriving as an invoice. This is the difference between a $5/month BigQuery bill
-  and a $500 one.
-- **The model is never handed `execute_sql`.** More on this in Act II.
+The blue row is someone opening a dashboard: they pick what they are looking at,
+the app turns that into one carefully-checked question, the warehouse reads only
+that slice, the finance maths runs, and they get a chart with the table behind
+it.
+
+The green row is someone asking the Copilot: they ask in plain English, a cheap
+model picks the right specialist, that specialist may only call eleven approved
+questions and **cannot write a database query**, those questions run the same
+maths, and the answer names the tool each figure came from.
+
+Then point at the dashed line joining the two rows. **Step 4 is literally the
+same function.** That is the whole trust argument in one line: the Copilot cannot
+quote a number the dashboard disagrees with, because it *is* the same number.
+
+Underneath sit three safety rules, and two of them are about *failure*:
+
+- **It cannot invent a column.** A filter name is checked against an approved
+  list before it ever reaches the database. Unchecked strings in an identifier
+  position are injection.
+- **It cannot forget the dates.** A query with no date range is refused, not run.
+  That is a $5 bill instead of a $500 one.
+- **The AI cannot do arithmetic.** It can only ask for numbers that already
+  exist.
+
+Each step carries the engineering name in grey beneath the plain sentence, so an
+architect gets the module map without the executive having to sit through it. The
+full module-level diagram ships as `docs/diagrams/lld_technical.svg` for anyone
+who wants it.
+
+> *Talk track:* "Vendors boast about what their system does. Almost nobody boasts
+> about what it refuses to do." 
 
 **Slide 8 — Connecting the clouds.** The question every CIO asks: *how many
 credentials?* Answer: **one per payer, not one per account.** One AWS

@@ -53,6 +53,12 @@ GREEN = "#0C7A3E"
 
 matplotlib.rcParams["svg.fonttype"] = "none"
 matplotlib.rcParams["font.family"] = "DejaVu Sans"
+# No label here is ever maths, and money has dollar signs in it. Left on, a
+# `$...$` pair is parsed as math: matplotlib strips both signs, italicises what
+# is between them, and emits glyph PATHS instead of a <text> node -- so the label
+# reads "a 5billinsteadofa500 one" AND stops being editable text, which is the
+# whole reason we ship SVG. Turning it off is the fix; escaping every `$` is not.
+matplotlib.rcParams["text.parse_math"] = False
 
 
 # ==========================================================================
@@ -73,12 +79,24 @@ def height(ax) -> float:
     return ax.get_ylim()[0]
 
 
-def band(ax, x, y, w, h, label: str, colour: str) -> None:
+def band(ax, x, y, w, h, label: str, colour: str, plain: str = "") -> None:
+    """A layer. `plain` says in English what the layer is FOR.
+
+    "SOURCES" and "INGEST" are words that mean something to the person who drew
+    the diagram. They tell a CFO nothing. The plain line sits in the band's
+    headroom, above the boxes, so it costs no layout.
+    """
     ax.add_patch(FancyBboxPatch((x, y), w, h, boxstyle="round,pad=0,rounding_size=1.2",
                                 linewidth=1, edgecolor=RULE, facecolor=WASH, zorder=1))
     ax.add_patch(mpatches.Rectangle((x, y), 0.55, h, facecolor=colour, edgecolor="none", zorder=2))
     ax.text(x + 1.7, y + h / 2, label, fontsize=6.8, color=colour, weight="bold",
             rotation=90, ha="center", va="center", zorder=3)
+    if plain:
+        # Above the arrows (zorder 3), on a WASH plate. Without both, the
+        # inter-layer arrows cross the band headroom and strike this line
+        # through -- which is exactly what happened on IDENTITY and SERVING.
+        ax.text(x + 2.9, y + 0.72, plain, fontsize=5.4, color=MUTED, ha="left", va="center", zorder=6,
+                bbox=dict(facecolor=WASH, edgecolor="none", pad=1.6))
 
 
 def node(ax, x, y, w, h, title: str, sub: str = "", colour: str = AZURE,
@@ -127,6 +145,31 @@ def notes(ax, lines: List[str], x: float = 3.0, pitch: float = 2.4, gap: float =
     return y0
 
 
+def step(ax, x, y, w, h, n: int, plain: str, tech: str, colour: str) -> float:
+    """A numbered step: a plain-English line, with the engineering name beneath.
+
+    Both audiences are in the room. The executive reads the bold line and follows
+    the story; the architect reads the grey line and knows exactly which module
+    we mean. Putting the jargon in a subtitle rather than in the title is the
+    whole trick.
+
+    `canvas()` scales x and y identically (100 units across, 100*h/w down), so a
+    Circle here is actually round.
+    """
+    ax.add_patch(FancyBboxPatch((x, y), w, h, boxstyle="round,pad=0,rounding_size=0.9",
+                                linewidth=1.2, edgecolor=colour, facecolor=PAPER, zorder=4))
+    ax.add_patch(mpatches.Circle((x + 2.4, y + 2.3), 1.35, facecolor=colour, edgecolor="none", zorder=6))
+    ax.text(x + 2.4, y + 2.3, str(n), fontsize=7.2, color=PAPER, weight="bold",
+            ha="center", va="center", zorder=7)
+    # Explicit line breaks, not matplotlib's `wrap=True` -- that wraps against
+    # the figure width, not the box, and silently runs text over the edge.
+    ax.text(x + 4.6, y + 2.3, plain, fontsize=7.6, color=INK, weight="bold",
+            ha="left", va="center", zorder=5, linespacing=1.35)
+    ax.text(x + 1.3, y + h - 1.5, tech, fontsize=5.4, color=MUTED,
+            ha="left", va="center", zorder=5, linespacing=1.4)
+    return x + w / 2
+
+
 def save(fig, name: str) -> List[str]:
     os.makedirs(OUT_DIR, exist_ok=True)
     paths = []
@@ -147,16 +190,22 @@ def hld() -> List[str]:
     fig, ax = canvas(16, 11)
     title(ax, "High level design",
           "Four clouds, one FOCUS warehouse, one control plane on Google Cloud",
-          "AWS and Azure federate through Workload Identity. OCI signs with an API key, so that one lives in Secret Manager.")
+          "Read it downward: a bill enters at the top, and leaves at the bottom as an answer on someone's screen.")
 
     Y_SRC, Y_AUTH, Y_ING, Y_WH, Y_SRV, Y_UX = 12.5, 22.0, 29.5, 40.0, 49.0, 58.5
 
-    band(ax, 2, Y_SRC - 1.3, 96, 8.0, "SOURCES", MUTED)
-    band(ax, 2, Y_AUTH - 1.2, 96, 5.2, "IDENTITY", CRIMSON)
-    band(ax, 2, Y_ING - 1.3, 96, 8.4, "INGEST", TEAL)
-    band(ax, 2, Y_WH - 1.3, 96, 7.0, "WAREHOUSE", VIOLET)
-    band(ax, 2, Y_SRV - 1.3, 96, 7.4, "SERVING", AZURE)
-    band(ax, 2, Y_UX - 1.3, 96, 6.4, "EXPERIENCE", GCP)
+    band(ax, 2, Y_SRC - 1.3, 96, 8.0, "SOURCES", MUTED,
+         "Where the bills come from. Four clouds, plus any tool you buy, plus any file you drop in.")
+    band(ax, 2, Y_AUTH - 1.2, 96, 5.2, "IDENTITY", CRIMSON,
+         "How we are allowed to read them. Read-only everywhere. AWS and Azure need no stored key; OCI needs exactly one.")
+    band(ax, 2, Y_ING - 1.3, 96, 8.4, "INGEST", TEAL,
+         "Once a night: translate every bill into one language, and keep the original in case we need to re-do it.")
+    band(ax, 2, Y_WH - 1.3, 96, 7.0, "WAREHOUSE", VIOLET,
+         "One table. Filed by date, so a question about last month reads last month.")
+    band(ax, 2, Y_SRV - 1.3, 96, 7.4, "SERVING", AZURE,
+         "The finance maths — and an AI that is only allowed to ask for it, never to compute it.")
+    band(ax, 2, Y_UX - 1.3, 96, 6.4, "EXPERIENCE", GCP,
+         "What people actually use.")
 
     # Sources -- one box per cloud, plus the escape hatches. Six boxes at width
     # 14.2 on a 15.2 pitch span 4.9..95.1 and stay inside the band.
@@ -343,14 +392,16 @@ def end_user_view() -> List[str]:
     fig, ax = canvas(16, 10)
     title(ax, "End user view",
           "Who asks what, and where the answer lives",
-          "One scope -- cloud, application, business unit, environment, period -- governs every panel on a page")
+          "Pick what you are looking at once, and every chart on the page obeys it. So two charts can never disagree.")
 
+    # Plain verbs, not product nouns. "Scope" and "Drill" mean something to us
+    # and nothing to the person being shown the slide.
     steps = [
-        ("Sign in", "Cloud Identity / Okta"),
-        ("Scope", "cloud · app · BU · env · period"),
-        ("Read", f"{len(PAGES) - 1} dashboards"),
-        ("Drill", "every chart has a table twin"),
-        ("Ask", "Copilot, streamed over SSE"),
+        ("Sign in", "your existing company login"),
+        ("Choose what\nyou're looking at", "cloud · app · business unit · period"),
+        ("Read a page", f"{len(PAGES) - 1} dashboards"),
+        ("Open the table\nbehind any chart", "and download it as a CSV"),
+        ("Or just ask", "the Copilot answers in plain English"),
     ]
     x, y = 3.5, 12.5
     for i, (name, sub) in enumerate(steps):
@@ -362,7 +413,7 @@ def end_user_view() -> List[str]:
     # Personas are the FinOps Foundation's. Each maps to the pages that answer
     # its question -- not to every page it is technically allowed to open.
     personas = [
-        ("Leadership", "Spend, forecast vs budget,\nESR, unit cost",
+        ("Leadership", "Spend, forecast vs budget,\nsavings rate, cost per customer",
          ["Executive", "Forecast", "Applications"], CRIMSON),
         ("Finance", "Variance, chargeback,\ninvoice reconciliation",
          ["Showback", "Forecast", "Governance"], VIOLET),
@@ -389,18 +440,108 @@ def end_user_view() -> List[str]:
         x += 18.8
 
     notes(ax, [
-        "Every chart has a table-view twin (ChartWithTable), so no value is reachable only through a tooltip.",
-        "Status is carried by an icon and a label as well as colour. Colour follows the entity, never its rank.",
-        "The Copilot answers in outcome terms and names the tool each figure came from. It cannot compute a number itself.",
-        "Sign-in is TARGET STATE. IAP is not yet in Terraform and the API ships today with no auth.",
+        "Read a column downward: this is the person, this is what they want to know, these are the pages that answer it.",
+        "Every chart has a table behind it, and every table downloads. No number is reachable only by hovering over it.",
+        "The Copilot answers in plain English and names where each figure came from. It cannot work a number out itself.",
+        "Sign-in is TARGET STATE. It is not built yet, and it lands before any real bill does.",
     ], pitch=2.7)
 
-    caption(ax, "Personas are the FinOps Foundation's. The page list is read from web/src/pages, so a renamed route fails the build.")
+    caption(ax, "The five personas are the FinOps Foundation's, not ours. The page list is read from the code, so a renamed page fails the build.")
     return save(fig, "end_user_view")
 
 
 # ==========================================================================
-# 4. Low level design
+# 4a. Low level design -- the story, in plain English
+#
+# The module-level view below (`lld_technical`) is correct and unreadable to
+# anyone who does not already know the system. It shows the plumbing. This one
+# shows what actually happens, twice: once when a person opens a dashboard, and
+# once when a person asks the Copilot a question.
+#
+# The engineering name for each step is a grey subtitle, not the heading. Both
+# audiences are in the room, and neither should have to sit through the other's
+# slide.
+# ==========================================================================
+
+
+def lld() -> List[str]:
+    fig, ax = canvas(16, 9.6)
+    title(ax, "Low level design",
+          "What actually happens when someone asks a question",
+          "Two paths through the system. They end at the same numbers — which is the whole point.")
+
+    STEP_W, STEP_H, PITCH = 17.2, 6.6, 18.7
+    X0 = 3.6
+
+    # ---- Path one: a dashboard --------------------------------------------
+    ax.text(3.6, 13.4, "SOMEONE OPENS A DASHBOARD", fontsize=6.6, color=AZURE, weight="bold", va="center")
+    y = 15.6
+    dash = [
+        (1, "You choose what\nyou're looking at", "cloud · application · business unit · period"),
+        (2, "The app turns that into\none careful question", "whitelisted columns · always a date range"),
+        (3, "The warehouse reads\nonly that slice", "BigQuery reads one partition, not two years"),
+        (4, "The finance maths\nruns, once", "kpi · forecast · allocation · anomaly"),
+        (5, "You get a chart, and\nthe table behind it", "every chart has a table twin and a CSV"),
+    ]
+    cx_dash = []
+    for i, (n, plain, tech) in enumerate(dash):
+        x = X0 + i * PITCH
+        cx_dash.append(step(ax, x, y, STEP_W, STEP_H, n, plain, tech, AZURE))
+        if i:
+            arrow(ax, (x - 1.5, y + STEP_H / 2), (x, y + STEP_H / 2), AZURE, lw=1.2)
+
+    # ---- Path two: the Copilot --------------------------------------------
+    ax.text(3.6, 26.6, "SOMEONE ASKS THE COPILOT", fontsize=6.6, color=GREEN, weight="bold", va="center")
+    y2 = 28.8
+    ask = [
+        (1, "You ask in\nplain English", "“Why did Analytics jump in May?”"),
+        (2, "A cheap model picks\nthe right specialist", "analyst · forecaster · optimizer · governor"),
+        (3, "It may only call 11\napproved questions", "typed tools — it cannot write a database query"),
+        (4, "Those questions run\nthe SAME maths", "the identical functions the dashboard uses"),
+        (5, "You get an answer\nthat cites its source", "every figure names the tool it came from"),
+    ]
+    cx_ask = []
+    for i, (n, plain, tech) in enumerate(ask):
+        x = X0 + i * PITCH
+        cx_ask.append(step(ax, x, y2, STEP_W, STEP_H, n, plain, tech, GREEN))
+        if i:
+            arrow(ax, (x - 1.5, y2 + STEP_H / 2), (x, y2 + STEP_H / 2), GREEN, lw=1.2)
+
+    # The join: step 4 of both paths is literally the same code.
+    arrow(ax, (cx_ask[3], y2), (cx_dash[3], y + STEP_H), VIOLET, lw=1.6, dashed=True)
+    ax.text(cx_dash[3] + 0.6, (y + STEP_H + y2) / 2, "the same code",
+            fontsize=6.0, color=VIOLET, weight="bold", ha="left", va="center")
+
+    # ---- Why you can trust it ---------------------------------------------
+    ax.text(3.6, 39.4, "THE THREE RULES THAT MAKE IT SAFE", fontsize=6.6, color=CRIMSON, weight="bold", va="center")
+    rules = [
+        ("It cannot invent a column",
+         "A filter name is checked against an approved list\nbefore it ever reaches the database."),
+        ("It cannot forget the dates",
+         "A query with no date range is refused, not run.\nThat is a $5 bill instead of a $500 one."),
+        ("The AI cannot do arithmetic",
+         "It can only ask for numbers that already exist,\nso it can never disagree with your dashboard."),
+    ]
+    rw, rp = 29.8, 31.5
+    for i, (head, body) in enumerate(rules):
+        rx = 3.6 + i * rp
+        ax.add_patch(FancyBboxPatch((rx, 41.4), rw, 7.4, boxstyle="round,pad=0,rounding_size=0.9",
+                                    linewidth=1.1, edgecolor=CRIMSON, facecolor="#FDF1F1", zorder=3))
+        ax.text(rx + rw / 2, 43.6, head, fontsize=7.4, color=INK, weight="bold", ha="center", va="center", zorder=4)
+        ax.text(rx + rw / 2, 46.4, body, fontsize=5.8, color=BODY, ha="center", va="center",
+                zorder=4, linespacing=1.5)
+
+    notes(ax, [
+        "Once a night a separate job scores the 59 optimization levers and stores the answer, because that answer changes once a day — not once a click.",
+        "Module-level detail for architects: docs/diagrams/lld_technical.svg",
+    ], x=3.6, pitch=2.4)
+
+    caption(ax, "Both paths end at step 4, and step 4 is one function. That is why the Copilot cannot quote a number the dashboard disagrees with.")
+    return save(fig, "lld")
+
+
+# ==========================================================================
+# 4b. Low level design -- the module-level view, for architects
 # ==========================================================================
 
 
@@ -415,9 +556,9 @@ LLD_MODULES = [
 ]
 
 
-def lld() -> List[str]:
+def lld_technical() -> List[str]:
     fig, ax = canvas(16, 10)
-    title(ax, "Low level design",
+    title(ax, "Low level design — module view",
           "One request, and one question, through the system",
           "Where the scope becomes SQL, where the cost guards bite, and why the model never sees a query")
 
@@ -491,7 +632,7 @@ def lld() -> List[str]:
     ], pitch=2.7)
 
     caption(ax, "Agent tools call the same repository the REST endpoints call, so the Copilot cannot quote a number the dashboard disagrees with.")
-    return save(fig, "lld")
+    return save(fig, "lld_technical")
 
 
 # ==========================================================================
@@ -502,6 +643,7 @@ def build_all() -> Dict[str, List[str]]:
         "hld": hld(),
         "end_user_view": end_user_view(),
         "lld": lld(),
+        "lld_technical": lld_technical(),
         "cloud_onboarding": cloud_onboarding(),
     }
 
