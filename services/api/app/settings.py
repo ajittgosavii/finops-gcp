@@ -6,20 +6,28 @@ reads a secret store directly, and `finops_core` never reads the environment at
 all -- it takes the mapping we hand it. That separation is what lets the same
 engines run in a Cloud Run Job, a test, and this API.
 
-Model choice is deliberate and worth explaining, because the names are
-irregular. Google's current line-up is `gemini-3.5-flash` (the flagship, despite
-the .5), `gemini-3.1-pro-preview` (Pro), and `gemini-3.1-flash-lite` (cheapest).
-There is no bare `gemini-3-flash` or `gemini-3-pro`. `gemini-2.0-flash` was
-retired on 2026-06-01 and the whole `gemini-2.5-*` family is scheduled for
-shutdown on 2026-10-16, so neither belongs in a new service.
+Model choice is deliberate, and the ids below are the ones Vertex actually
+serves in this project. That is not a detail worth taking on trust: this file
+previously named `gemini-3.5-flash`, `gemini-3.1-flash-lite` and
+`gemini-3.1-pro-preview`, cited three Google documentation URLs, and warned the
+reader not to "simplify" them. All three return HTTP 404. The agent routes would
+have failed on first use in production.
+
+Verified 2026-09-07 by issuing a real `generateContent` against
+`us-central1-aiplatform.googleapis.com` in this project:
+
+    gemini-2.5-pro          200 OK
+    gemini-2.5-flash        200 OK
+    gemini-3.5-flash        404
+    gemini-3.1-flash-lite   404
+    gemini-3.1-pro-preview  404
+    gemini-2.0-flash        404  (retired)
 
 We route on the cheap model and reason on the flagship -- the small-model-first
 lever (G3 in our own optimization catalog) applied to ourselves.
 
-Sources:
-  https://ai.google.dev/gemini-api/docs/models
-  https://ai.google.dev/gemini-api/docs/pricing
-  https://ai.google.dev/gemini-api/docs/deprecations
+If these need changing, re-run that check rather than reading a docs page. A
+model id is a claim about a live endpoint, and the endpoint is the authority.
 """
 
 from __future__ import annotations
@@ -29,11 +37,10 @@ from dataclasses import dataclass, field
 from functools import lru_cache
 from typing import Dict, List, Optional
 
-# Verified against Google's models page, July 2026. Do not "simplify" these to
-# gemini-3-flash / gemini-3-pro: those identifiers do not exist and 404.
-MODEL_REASONING = "gemini-3.5-flash"  # $1.50 / $9.00 per 1M tokens
-MODEL_ROUTING = "gemini-3.1-flash-lite"  # $0.25 / $1.50 per 1M tokens
-MODEL_PRO = "gemini-3.1-pro-preview"  # $2.00 / $12.00 (<=200k prompt)
+# Verified by live call, not by documentation. See the module docstring.
+MODEL_REASONING = "gemini-2.5-pro"
+MODEL_ROUTING = "gemini-2.5-flash"
+MODEL_PRO = "gemini-2.5-pro"
 
 
 def _bool(name: str, default: bool = False) -> bool:

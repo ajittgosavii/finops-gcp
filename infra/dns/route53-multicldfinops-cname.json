@@ -1,0 +1,16 @@
+{
+  "Comment": "multicldfinops.aieksops.com -> Cloud Run finops-api (us-central1) via domain mapping",
+  "Changes": [
+    {
+      "Action": "UPSERT",
+      "ResourceRecordSet": {
+        "Name": "multicldfinops.aieksops.com",
+        "Type": "CNAME",
+        "TTL": 300,
+        "ResourceRecords": [
+          { "Value": "ghs.googlehosted.com" }
+        ]
+      }
+    }
+  ]
+}

@@ -45,19 +45,59 @@ variable "ingest_image" {
   default     = ""
 }
 
-# -- Gemini model ids. Verified against Google's models page (see
-#    services/api/app/settings.py). There is deliberately NO API key variable:
-#    Vertex authenticates via ADC on the Cloud Run service account.
+# -- Gemini model ids. Verified by a live generateContent call against Vertex in
+#    this project on 2026-09-07, not from a documentation page -- the previous
+#    defaults (gemini-3.5-flash / gemini-3.1-flash-lite) return 404. See the
+#    module docstring in services/api/app/settings.py for the full result table.
+#    There is deliberately NO API key variable: Vertex authenticates via ADC on
+#    the Cloud Run service account.
 variable "model_reasoning" {
-  description = "Flagship model for reasoning (despite the .5, this is the current flagship)."
+  description = "Model used for reasoning. Must be one Vertex serves in var.region."
   type        = string
-  default     = "gemini-3.5-flash"
+  default     = "gemini-2.5-pro"
 }
 
 variable "model_routing" {
-  description = "Cheapest model, used only for routing (small-model-first)."
+  description = "Cheaper model, used only for routing (small-model-first)."
   type        = string
-  default     = "gemini-3.1-flash-lite"
+  default     = "gemini-2.5-flash"
+}
+
+variable "data_source" {
+  description = <<-EOT
+    Where the API reads from: "demo" (synthetic estate generated in-process, no
+    credentials, no warehouse) or "bigquery" (the FOCUS warehouse).
+
+    Defaults to demo deliberately. The warehouse exists as soon as this
+    Terraform is applied, but it is EMPTY until a FOCUS export from a real payer
+    has been ingested -- and a console wired to an empty warehouse looks broken
+    rather than looking honest. Flip this to "bigquery" when focus_costs has
+    data in it, not when the table has been created.
+  EOT
+  type        = string
+  default     = "demo"
+
+  validation {
+    condition     = contains(["demo", "bigquery"], var.data_source)
+    error_message = "data_source must be \"demo\" or \"bigquery\"."
+  }
+}
+
+variable "allow_public_access" {
+  description = <<-EOT
+    Grant roles/run.invoker to allUsers, making the service reachable by a
+    browser without a Google identity.
+
+    This UNDOES a deliberate property. The service was written with no public
+    invoker so that a caller must authenticate; that is the correct posture the
+    moment real Con Edison billing data is in the warehouse. It is set true only
+    while data_source is "demo" and the estate is synthetic.
+
+    Turning this on with data_source = "bigquery" is almost certainly a mistake,
+    so the plan below refuses that combination outright.
+  EOT
+  type        = bool
+  default     = true
 }
 
 variable "allow_origins" {

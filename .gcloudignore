@@ -1,0 +1,39 @@
+# What NOT to upload as Cloud Build context.
+#
+# Without this the context includes infra/terraform/.terraform/, which holds a
+# ~150 MB provider binary, plus the .git history and the .docx/.pptx artefacts.
+# None of it is reachable from either Dockerfile, and all of it is paid for
+# twice: once uploading and once again on every rebuild.
+#
+# Note this file REPLACES .gitignore as the exclusion source once it exists, so
+# anything that must stay out has to be listed here even if git already ignores
+# it.
+
+.git/
+.gitignore
+
+# Terraform state, plugins and the provider binary.
+infra/terraform/.terraform/
+infra/terraform/*.tfstate
+infra/terraform/*.tfstate.*
+infra/terraform/terraform.tfvars
+infra/terraform/*.auto.tfvars
+
+# Node: the image runs `npm ci` itself, and a host-built tree is the wrong
+# platform anyway.
+**/node_modules/
+web/dist/
+
+# Python build and test detritus.
+**/__pycache__/
+**/*.pyc
+**/.pytest_cache/
+**/*.egg-info/
+.venv/
+venv/
+
+# Generated documents. Large, binary, and not part of any image.
+*.docx
+*.pptx
+*.xlsx
+docs/diagrams/*.png

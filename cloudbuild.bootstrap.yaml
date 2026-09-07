@@ -1,0 +1,54 @@
+# First-push build. Build and push both images at :latest, and deploy nothing.
+#
+# cloudbuild.yaml is the steady-state pipeline: it tags with ${SHORT_SHA} and
+# then runs `gcloud run deploy` against services that already exist. Neither
+# holds on a first build -- ${SHORT_SHA} is empty for a manual
+# `gcloud builds submit` (producing an invalid `image:` tag), and the Cloud Run
+# service does not exist yet because Terraform cannot create it until an image
+# is in the registry.
+#
+# So this file exists to break that circle exactly once:
+#
+#   terraform apply -target=...artifact_registry...   registry exists
+#   gcloud builds submit --config cloudbuild.bootstrap.yaml   images exist
+#   terraform apply                                   service exists
+#
+# After that, use cloudbuild.yaml.
+
+substitutions:
+  _REGION: us-central1
+  _REPO: finops
+
+options:
+  logging: CLOUD_LOGGING_ONLY
+  machineType: E2_HIGHCPU_8
+
+images:
+  - "${_REGION}-docker.pkg.dev/${PROJECT_ID}/${_REPO}/finops-api:latest"
+  - "${_REGION}-docker.pkg.dev/${PROJECT_ID}/${_REPO}/finops-ingest:latest"
+
+steps:
+  # The API image also builds the React client and carries it at /app/web, so
+  # this step runs npm ci and vite build as well as pip install. It is the slow
+  # one; the ingest image is Python only.
+  - id: build-api
+    name: gcr.io/cloud-builders/docker
+    args:
+      - build
+      - -f
+      - services/api/Dockerfile
+      - -t
+      - "${_REGION}-docker.pkg.dev/${PROJECT_ID}/${_REPO}/finops-api:latest"
+      - .
+
+  - id: build-ingest
+    name: gcr.io/cloud-builders/docker
+    args:
+      - build
+      - -f
+      - services/ingest/Dockerfile
+      - -t
+      - "${_REGION}-docker.pkg.dev/${PROJECT_ID}/${_REPO}/finops-ingest:latest"
+      - .
+
+timeout: 1800s

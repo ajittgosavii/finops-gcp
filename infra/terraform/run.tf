@@ -24,10 +24,25 @@ resource "google_cloud_run_v2_service" "api" {
   location = var.region
   ingress  = "INGRESS_TRAFFIC_ALL"
 
-  # No allUsers invoker binding is created below, so the service is effectively
+  # Whether a public invoker exists is var.allow_public_access, granted at the
+  # bottom of this file. With it false the service is effectively
   # --no-allow-unauthenticated: a caller must present a Google identity.
   deletion_protection = false
   labels              = var.labels
+
+  lifecycle {
+    # Public access is acceptable over a synthetic estate and is not acceptable
+    # over a customer's billing data. Rather than leave that as a sentence in a
+    # README, the apply refuses the combination.
+    precondition {
+      condition = !(var.allow_public_access && var.data_source == "bigquery")
+      error_message = join(" ", [
+        "Refusing to expose the FOCUS warehouse publicly.",
+        "allow_public_access = true serves real billing data to anyone with the URL.",
+        "Set allow_public_access = false and put IAP in front, or keep data_source = \"demo\".",
+      ])
+    }
+  }
 
   template {
     service_account = google_service_account.api.email
@@ -49,7 +64,7 @@ resource "google_cloud_run_v2_service" "api" {
 
       env {
         name  = "DATA_SOURCE"
-        value = "bigquery"
+        value = var.data_source
       }
       env {
         name  = "GOOGLE_GENAI_USE_VERTEXAI"
@@ -93,6 +108,26 @@ resource "google_cloud_run_v2_service" "api" {
     google_project_service.services,
     google_secret_manager_secret_iam_member.api_secret_accessor,
   ]
+}
+
+# ---------------------------------------------------------------------------
+# Public access. The service also serves the React client from the same origin
+# (see services/api/Dockerfile), so this binding is what lets a browser load the
+# console at all -- there is no separate front end to make public instead.
+#
+# It is a variable rather than a constant because it is a decision with a date
+# on it: true while the estate is synthetic, false before a real payer's data
+# lands. The precondition on the service above enforces that pairing.
+# ---------------------------------------------------------------------------
+
+resource "google_cloud_run_v2_service_iam_member" "public" {
+  count = var.allow_public_access ? 1 : 0
+
+  project  = google_cloud_run_v2_service.api.project
+  location = google_cloud_run_v2_service.api.location
+  name     = google_cloud_run_v2_service.api.name
+  role     = "roles/run.invoker"
+  member   = "allUsers"
 }
 
 # ---------------------------------------------------------------------------

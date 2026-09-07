@@ -14,11 +14,13 @@ makes no chart-design decisions and therefore cannot break them.
 from __future__ import annotations
 
 import datetime as dt
+from pathlib import Path
 from typing import Any, Dict, List, Optional
 
 from fastapi import Depends, FastAPI, HTTPException, Query
 from fastapi.middleware.cors import CORSMiddleware
-from fastapi.responses import StreamingResponse
+from fastapi.responses import FileResponse, StreamingResponse
+from fastapi.staticfiles import StaticFiles
 from pydantic import BaseModel, Field
 
 from finops_core import CORE_PERSONAS, DOMAINS, focus
@@ -73,8 +75,21 @@ def repo() -> Repository:
 
 
 @app.get("/healthz", tags=["meta"])
+@app.get("/api/healthz", tags=["meta"])
 def healthz() -> dict:
-    """Liveness. Deliberately does no work: Cloud Run probes this constantly."""
+    """Liveness. Deliberately does no work: probes hit this constantly.
+
+    Registered at BOTH paths because `/healthz` is unreachable on a Cloud Run
+    `*.run.app` URL -- Google's front end answers it with its own 404 page and
+    the request never reaches this process. Verified 2026-09-07 on
+    finops-api-vldauvp5cq-uc.a.run.app: `/healthz` 404s while `/healthz/`,
+    `/healthzz` and every other path reach the container normally. It is exactly
+    that one string.
+
+    So `/api/healthz` is the path to point a monitor or an uptime check at. The
+    original is kept because it works behind a custom domain and in local
+    development, and removing it would break anything already using it.
+    """
     return {"ok": True, "version": app.version}
 
 
@@ -338,3 +353,54 @@ async def agent_ask(body: AskRequest):
         media_type="text/event-stream",
         headers={"Cache-Control": "no-cache", "X-Accel-Buffering": "no"},
     )
+
+
+# ==========================================================================
+# The single-page client
+#
+# The React client is built into this image (see services/api/Dockerfile) and
+# served from the same origin as the API. That is the whole reason CORS is
+# effectively dead code in production: the browser asks
+# multicldfinops.aieksops.com for both /api/kpis and /assets/index.js, so there
+# is no cross-origin request to allow. `web/src/lib/api.ts` falls back to an
+# empty base URL when VITE_API_BASE is unset, which is how the build is made.
+#
+# Registered LAST, and that is load-bearing. FastAPI matches routes in
+# definition order, so the catch-all below can only ever see a path that no
+# API route claimed. Move it above the routes and it swallows the entire API.
+# ==========================================================================
+
+_WEB_DIR = Path(__file__).resolve().parent.parent / "web"
+
+if _WEB_DIR.is_dir():
+    app.mount(
+        "/assets",
+        StaticFiles(directory=_WEB_DIR / "assets"),
+        name="assets",
+    )
+
+    @app.get("/{full_path:path}", include_in_schema=False)
+    def spa(full_path: str) -> FileResponse:
+        """Serve a real file if there is one, otherwise the SPA shell.
+
+        A client-side route such as /optimize is not a file on disk, so the
+        shell has to answer for it or a refresh on any deep link 404s.
+
+        Two things this must NOT do:
+
+        * **Answer for /api.** An unknown API path has to 404 as JSON. When this
+          catch-all was first written it returned the SPA shell for anything
+          unmatched, so `GET /api/healthz` came back 200 with HTML -- a health
+          check or a client with a typo would have read that as success for
+          ever. A wrong path must fail like a wrong path.
+        * **Serve outside the web directory.** The candidate is resolved and
+          checked to be inside `_WEB_DIR`; without that, a request for
+          `../../../etc/passwd` is a file read.
+        """
+        if full_path == "api" or full_path.startswith("api/"):
+            raise HTTPException(status_code=404, detail=f"No API route /{full_path}")
+
+        candidate = (_WEB_DIR / full_path).resolve()
+        if full_path and candidate.is_file() and candidate.is_relative_to(_WEB_DIR):
+            return FileResponse(candidate)
+        return FileResponse(_WEB_DIR / "index.html")
